@@ -711,7 +711,7 @@ function ExpenseForm({
 
 
   return (
-    <form onSubmit={onSubmit} className="bg-indigo-50 p-5 border border-indigo-100 rounded-2xl space-y-4">
+    <form onSubmit={onSubmit} className="bg-white p-5 border border-indigo-200 rounded-2xl space-y-4">
       <div>
         <label className="text-sm font-medium text-slate-700 leading-loose">What was it for?</label>
         <input

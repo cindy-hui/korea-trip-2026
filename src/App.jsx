@@ -14,7 +14,12 @@ import {
 } from 'lucide-react';
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
-
+const FX_RATES = {
+  // base: 1 unit of key = value in HKD
+  HKD: 1,
+  KRW: 0.0052, // adjust to your preferred fixed rate
+  USD: 7.8,
+};
 const INITIAL_ITINERARY = [
   {
     id: 'day1',
@@ -270,12 +275,16 @@ const INITIAL_PACKING_LIST = {
   ],
 };
 
+const CATEGORY_PRESETS = ['Food', 'Transport', 'Shopping', 'Others']; // simple presets
+
 const INITIAL_EXPENSE = {
   desc: '',
   amount: '',
   payer: FRIENDS[0],
   participants: [...FRIENDS],
   category: 'Food',
+  categoryTags: ['Food'],
+  currency: 'KRW',
   date: new Date().toISOString().split('T')[0],
 };
 
@@ -679,108 +688,107 @@ function ExpenseForm({
   onToggleParticipant,
   onSubmit,
 }) {
-  return (
-    <form
-      onSubmit={onSubmit}
-      className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4"
-    >
-      <h3 className="font-bold text-slate-800">Add Expense</h3>
+  const PRESET_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'];
 
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-500">
-          What was it for?
-        </label>
+  const handleAddTag = (tag) => {
+    const clean = tag.trim();
+    if (!clean || newExpense.categoryTags.includes(clean)) return;
+    onChangeNewExpense({
+      ...newExpense,
+      categoryTags: [...newExpense.categoryTags, clean],
+      category: clean,
+    });
+  };
+
+  const handleRemoveTag = (tag) => {
+    const nextTags = newExpense.categoryTags.filter((t) => t !== tag);
+    onChangeNewExpense({
+      ...newExpense,
+      categoryTags: nextTags,
+      category: nextTags[0] || 'Others',
+    });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4 p-4 border rounded">
+      <div>
+        <label className="block font-medium mb-1">What was it for?</label>
         <input
           type="text"
-          required
-          placeholder="e.g. Taxi to Hongdae"
           value={newExpense.desc}
           onChange={(e) =>
             onChangeNewExpense({ ...newExpense, desc: e.target.value })
           }
-          className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl"
+          required
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-500">
-            Amount (KRW)
-          </label>
+      <div className="flex space-x-2">
+        <div className="flex-1">
+          <label className="block font-medium mb-1">Amount</label>
           <input
             type="number"
-            required
-            placeholder="0"
-            min="0"
+            step="0.01"
             value={newExpense.amount}
             onChange={(e) =>
               onChangeNewExpense({ ...newExpense, amount: e.target.value })
             }
-            className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl font-mono"
+            required
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-500">
-            Who Paid?
-          </label>
+
+        <div>
+          <label className="block font-medium mb-1">Currency</label>
           <select
-            value={newExpense.payer}
+            value={newExpense.currency}
             onChange={(e) =>
-              onChangeNewExpense({ ...newExpense, payer: e.target.value })
+              onChangeNewExpense({ ...newExpense, currency: e.target.value })
             }
-            className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"
           >
-            {friends.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
+            <option value="KRW">KRW</option>
+            <option value="HKD">HKD</option>
+            <option value="USD">USD</option>
           </select>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-500">
-            Category
-          </label>
-          <input
-            type="text"
-            placeholder="e.g. Food, Transport"
-            value={newExpense.category}
-            onChange={(e) =>
-              onChangeNewExpense({ ...newExpense, category: e.target.value })
-            }
-            className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-500">Date</label>
-          <input
-            type="date"
-            value={newExpense.date}
-            onChange={(e) =>
-              onChangeNewExpense({ ...newExpense, date: e.target.value })
-            }
-            className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200"
-          />
+      <div>
+        <label className="block font-medium mb-1">Category</label>
+        <div className="flex flex-wrap gap-2">
+          {PRESET_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() =>
+                onChangeNewExpense({ ...newExpense, category: cat })
+              }
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border ${
+                newExpense.category === cat
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-slate-500">
-          Split among:
-        </label>
+      <div>
+        <label className="block font-medium mb-1">Split among:</label>
         <div className="flex flex-wrap gap-2">
           {friends.map((f) => (
             <button
-              type="button"
               key={f}
+              type="button"
               onClick={() => onToggleParticipant(f)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors border ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-full border ${
                 newExpense.participants.includes(f)
-                  ? 'bg-slate-800 text-white border-slate-800'
-                  : 'bg-white text-slate-500 border-slate-200'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-white text-gray-500'
               }`}
             >
               {f}
@@ -789,48 +797,69 @@ function ExpenseForm({
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="w-full bg-indigo-500 text-white font-medium py-3 rounded-xl shadow-md shadow-indigo-200 hover:bg-indigo-600 transition-colors"
-      >
+      <div>
+        <button
+          type="submit"
+          className="w-full bg-indigo-500 text-white font-medium py-3 rounded-xl shadow-md">
         Add Expense
-      </button>
+        </button>
+      </div>
     </form>
   );
 }
 
-function ExpensesList({ expenses, onRemove }) {
+function ExpensesList({ groupedByDate, onRemove }) {
+  const dates = Object.keys(groupedByDate).sort((a, b) => (a < b ? 1 : -1));
+
+
   return (
     <div className="space-y-3">
       <h3 className="font-bold text-slate-800">Recent Expenses</h3>
-      {expenses.length === 0 ? (
+      {dates.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-4">
-          No expenses added yet.
+          No expenses found.
         </p>
       ) : (
-        expenses.map((exp) => (
-          <div
-            key={exp.id}
-            className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group"
-          >
-            <div>
-              <p className="text-sm font-bold text-slate-800">{exp.desc}</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {exp.category} • {exp.date} • Paid by {exp.payer} • Split{' '}
-                {exp.participants.length} ways
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-mono font-bold text-sm text-slate-700">
-                {exp.amount.toLocaleString()} ₩
-              </span>
-              <button
-                onClick={() => onRemove(exp.id)}
-                className="text-slate-300 hover:text-red-500"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+        dates.map((date) => (
+          <div key={date} className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500 uppercase">
+              {date}
+            </p>
+            {groupedByDate[date].map((exp) => {
+              const hkd = toHKD(exp.amount, exp.currency || 'KRW');
+              const krw = toKRW(exp.amount, exp.currency || 'KRW');
+              return (
+                <div
+                  key={exp.id}
+                  className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">
+                      {exp.desc}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {(exp.categoryTags || [exp.category]).join(', ')} • Paid
+                      by {exp.payer} • Split {exp.participants.length} ways
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="font-mono font-bold text-sm text-slate-700">
+                      {exp.amount.toLocaleString()} {exp.currency || 'KRW'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ≈ {Math.round(hkd).toLocaleString()} HKD •{' '}
+                      {Math.round(krw).toLocaleString()} KRW
+                    </span>
+                    <button
+                      onClick={() => onRemove(exp.id)}
+                      className="text-slate-300 hover:text-red-500"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))
       )}
@@ -838,30 +867,182 @@ function ExpensesList({ expenses, onRemove }) {
   );
 }
 
+
+
 function ExpensesTab({
   expenses,
+  groupedByDate,
   settlements,
   newExpense,
   onChangeNewExpense,
   onToggleParticipant,
   onAddExpense,
   onRemoveExpense,
+  categoryFilter,
+  onChangeCategoryFilter,
+  dateFilter,
+  onChangeDateFilter,
+  categoryTotalsHKD,
+  summaryPerson,
+  onChangeSummaryPerson,
 }) {
+  const allCategories = Array.from(
+    new Set(
+      expenses.flatMap((e) => e.categoryTags || [e.category])
+    )
+  );
+
+  const [showAdd, setShowAdd] = useState(true); // collapse behaviour
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-xl font-semibold mb-2">Split the Bill</h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-semibold">Split the Bill</h2>
+        <div className="flex gap-2">
+          <select
+            value={categoryFilter}
+            onChange={(e) => onChangeCategoryFilter(e.target.value)}
+            className="px-2 py-1 text-[10px] bg-white border border-slate-200 rounded-full"
+          >
+            <option value="All">All categories</option>
+            {allCategories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={dateFilter}
+            onChange={(e) => onChangeDateFilter(e.target.value)}
+            className="px-2 py-1 text-[10px] bg-white border border-slate-200 rounded-full"
+          >
+            <option value="All">All dates</option>
+            <option value="Today">Today</option>
+            <option value="Trip">Trip dates</option>
+          </select>
+        </div>
+      </div>
+
       <SettlementsSummary settlements={settlements} />
-      <ExpenseForm
-        friends={FRIENDS}
-        newExpense={newExpense}
-        onChangeNewExpense={onChangeNewExpense}
-        onToggleParticipant={onToggleParticipant}
-        onSubmit={onAddExpense}
-      />
-      <ExpensesList expenses={expenses} onRemove={onRemoveExpense} />
+
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+        <button
+          type="button"
+          onClick={() => setShowAdd((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-slate-700"
+        >
+          <span>Add Expense</span>
+          <span className="text-xs text-slate-400">
+            {showAdd ? 'Hide' : 'Show'}
+          </span>
+        </button>
+        {showAdd && (
+          <div className="px-5 pb-5">
+            <ExpenseForm
+              friends={FRIENDS}
+              newExpense={newExpense}
+              onChangeNewExpense={onChangeNewExpense}
+              onToggleParticipant={onToggleParticipant}
+              onSubmit={onAddExpense}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-800 text-sm">
+            Expense Summary
+          </h3>
+          <select
+            value={summaryPerson}
+            onChange={(e) => onChangeSummaryPerson(e.target.value)}
+            className="px-2 py-1 text-[10px] bg-slate-50 border border-slate-200 rounded-full"
+          >
+            <option value="All">All friends</option>
+            {FRIENDS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Showing category breakdown in HKD based on who paid / participated.
+        </p>
+        <PieChart data={categoryTotalsHKD} />
+      </div>
+      <ExpensesList groupedByDate={groupedByDate} onRemove={onRemoveExpense} />
     </div>
   );
 }
+
+function PieChart({ data }) {
+  const entries = Object.entries(data);
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  if (total === 0) {
+    return (
+      <p className="text-xs text-slate-400 text-center py-4">
+        No expenses to summarize yet.
+      </p>
+    );
+  }
+
+  let cumulative = 0;
+  const radius = 40;
+  const colors = ['#6366F1', '#F97316', '#22C55E', '#EC4899', '#0EA5E9'];
+
+  return (
+    <div className="flex items-center gap-4">
+      <svg viewBox="0 0 100 100" className="w-24 h-24">
+        {entries.map(([key, value], idx) => {
+          const startAngle = (cumulative / total) * 2 * Math.PI;
+          const slice = (value / total) * 2 * Math.PI;
+          const endAngle = startAngle + slice;
+          cumulative += value;
+
+          const x1 = 50 + radius * Math.cos(startAngle);
+          const y1 = 50 + radius * Math.sin(startAngle);
+          const x2 = 50 + radius * Math.cos(endAngle);
+          const y2 = 50 + radius * Math.sin(endAngle);
+          const largeArc = slice > Math.PI ? 1 : 0;
+
+          const d = `
+            M 50 50
+            L ${x1} ${y1}
+            A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}
+            Z
+          `;
+
+          return (
+            <path
+              key={key}
+              d={d}
+              fill={colors[idx % colors.length]}
+              stroke="#ffffff"
+              strokeWidth="0.5"
+            />
+          );
+        })}
+      </svg>
+      <div className="space-y-1">
+        {entries.map(([key, value], idx) => (
+          <div key={key} className="flex items-center text-xs text-slate-600">
+            <span
+              className="w-2 h-2 rounded-full mr-2"
+              style={{ backgroundColor: colors[idx % colors.length] }}
+            />
+            <span className="flex-1">{key}</span>
+            <span className="font-mono text-[10px] text-slate-500">
+              {Math.round(value).toLocaleString()} HKD
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 // Main App
 export default function App() {
@@ -871,7 +1052,62 @@ export default function App() {
   const [expenses, setExpenses] = useState([]);
   const [isEditingItinerary, setIsEditingItinerary] = useState(false);
   const [newExpense, setNewExpense] = useState(INITIAL_EXPENSE);
+  const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
+  const [expenseDateFilter, setExpenseDateFilter] = useState('All'); // All | Today | Trip
+  const [summaryPerson, setSummaryPerson] = useState('All');
+  // Category tags system
+  const [categories, setCategories] = useState([
+    'Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'
+  ]);
+  const [editingCategories, setEditingCategories] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
 
+  const [selectedCategory, setSelectedCategory] = useState('food');
+
+
+  const TRIP_START = '2026-04-06';
+  const TRIP_END = '2026-04-10';
+
+  const filteredExpenses = expenses.filter((exp) => {
+    const tags = exp.categoryTags || [exp.category];
+
+    const matchCategory =
+      expenseCategoryFilter === 'All' ||
+      tags.includes(expenseCategoryFilter);
+
+    let matchDate = true;
+    if (expenseDateFilter === 'Trip') {
+      matchDate = exp.date >= TRIP_START && exp.date <= TRIP_END;
+    }
+    if (expenseDateFilter === 'Today') {
+      const today = new Date().toISOString().split('T')[0];
+      matchDate = exp.date === today;
+    }
+
+    return matchCategory && matchDate;
+  });
+
+  const groupedByDate = filteredExpenses.reduce((acc, exp) => {
+    const key = exp.date;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(exp);
+    return acc;
+  }, {});
+
+  const summaryExpenses = expenses.filter((exp) => {
+    if (summaryPerson === 'All') return true;
+    return exp.payer === summaryPerson || exp.participants.includes(summaryPerson);
+  });
+
+  const categoryTotalsHKD = summaryExpenses.reduce((acc, exp) => {
+    const tags = exp.categoryTags || [exp.category];
+    const primary = tags[0] || 'Others';
+    const amountHKD = toHKD(exp.amount, exp.currency || 'KRW');
+    acc[primary] = (acc[primary] || 0) + amountHKD;
+    return acc;
+  }, {});
+
+  
   useEffect(() => {
     const savedItinerary = localStorage.getItem('korea_itinerary');
     const savedPacking = localStorage.getItem('korea_packing');
@@ -1024,6 +1260,8 @@ export default function App() {
       payer: newExpense.payer,
       participants: newExpense.participants,
       category: newExpense.category,
+      categoryTags: newExpense.categoryTags || [newExpense.category],
+      currency: newExpense.currency || 'KRW',
       date: newExpense.date,
     };
 
@@ -1036,7 +1274,19 @@ export default function App() {
   };
 
   const removeExpense = (id) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    setExpenses((prev) => prev.filter((exp) => exp.id !== id));
+  };
+  
+  const toHKD = (amount, currency) => {
+    if (!amount) return 0;
+    const rate = FX_RATES[currency] || 1;
+    return amount * rate;
+  };
+
+  const toKRW = (amount, currency) => {
+    const hkd = toHKD(amount, currency);
+    const krwPerHKD = 1 / FX_RATES['KRW'];
+    return hkd * krwPerHKD;
   };
 
   const toggleParticipant = (friend) => {
@@ -1053,10 +1303,11 @@ export default function App() {
     FRIENDS.forEach((f) => (balances[f] = 0));
 
     expenses.forEach((exp) => {
-      const split = exp.amount / exp.participants.length;
-      balances[exp.payer] += exp.amount;
+      const totalHKD = toHKD(exp.amount, exp.currency || 'KRW');
+      const splitHKD = totalHKD / exp.participants.length;
+      balances[exp.payer] += totalHKD;
       exp.participants.forEach((p) => {
-        balances[p] -= split;
+        balances[p] -= splitHKD;
       });
     });
 
@@ -1077,7 +1328,12 @@ export default function App() {
       const creditor = creditors[j];
       const min = Math.min(debtor.amount, creditor.amount);
 
-      settlements.push({ from: debtor.person, to: creditor.person, amount: min });
+      // show as KRW for familiarity
+      settlements.push({
+        from: debtor.person,
+        to: creditor.person,
+        amount: Math.round(toKRW(min, 'HKD')),
+      });
 
       debtor.amount -= min;
       creditor.amount -= min;
@@ -1090,6 +1346,20 @@ export default function App() {
   };
 
   const settlements = calculateSettlements();
+
+    // Category handlers
+  const addCategory = () => {
+    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
+      setCategories([...categories, newCategory.trim()]);
+      setNewCategory('');
+    }
+  };
+
+  const removeCategory = (categoryToRemove) => {
+    setCategories(categories.filter(cat => cat !== categoryToRemove));
+    // Optionally remove from existing expenses too, but for now just update state
+  };
+
 
   return (
     <div className="flex flex-col h-screen bg-indigo-50/30 text-slate-800 font-sans">
@@ -1127,17 +1397,26 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'expenses' && (
-          <ExpensesTab
-            expenses={expenses}
-            settlements={settlements}
-            newExpense={newExpense}
-            onChangeNewExpense={setNewExpense}
-            onToggleParticipant={toggleParticipant}
-            onAddExpense={addExpense}
-            onRemoveExpense={removeExpense}
-          />
-        )}
+      {activeTab === 'expenses' && (
+        <ExpensesTab
+          expenses={expenses}
+          groupedByDate={groupedByDate}
+          settlements={settlements}
+          newExpense={newExpense}
+          onChangeNewExpense={setNewExpense}
+          onToggleParticipant={toggleParticipant}
+          onAddExpense={addExpense}
+          onRemoveExpense={removeExpense}
+          categoryFilter={expenseCategoryFilter}
+          onChangeCategoryFilter={setExpenseCategoryFilter}
+          dateFilter={expenseDateFilter}
+          onChangeDateFilter={setExpenseDateFilter}
+          categoryTotalsHKD={categoryTotalsHKD}
+          summaryPerson={summaryPerson}
+          onChangeSummaryPerson={setSummaryPerson}
+        />
+      )}
+
       </main>
 
       <nav className="bg-white border-t border-slate-100 fixed bottom-0 w-full pb-safe flex justify-around px-2 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] rounded-t-3xl">

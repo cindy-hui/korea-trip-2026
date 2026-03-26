@@ -522,10 +522,50 @@ function PackingCategoryCard({
   onChangeName,
   onRemoveItem,
   onAddItem,
+  onRenameCategory,
+  onRemoveCategory,
 }) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState(category);
+
+  const handleTitleBlur = () => {
+    const newTitle = tempTitle.trim() || category;
+    if (newTitle !== category) {
+      onRenameCategory(category, newTitle);
+    }
+    setIsEditingTitle(false);
+  };
+
   return (
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-      <h3 className="font-bold text-slate-800 mb-3">{category}</h3>
+      <div className="flex items-center justify-between mb-3">
+        {isEditingTitle ? (
+          <input
+            autoFocus
+            type="text"
+            value={tempTitle}
+            onChange={(e) => setTempTitle(e.target.value)}
+            onBlur={handleTitleBlur}
+            className="font-bold text-slate-800 bg-transparent border-b border-slate-300 focus:outline-none focus:border-indigo-500 text-sm"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsEditingTitle(true)}
+            className="font-bold text-slate-800 text-left text-sm"
+          >
+            {category}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onRemoveCategory(category)}
+          className="text-slate-300 hover:text-red-500"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
       <div className="space-y-3">
         {items.map((item) => (
           <PackingItem
@@ -560,12 +600,26 @@ function PackingTab({
   onChangeItemName,
   onAddItem,
   onRemoveItem,
+  onAddCategory,
+  onRenameCategory,
+  onRemoveCategory,
 }) {
   const [activeEditId, setActiveEditId] = useState(null);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h2 className="text-xl font-semibold mb-4">Packing Checklist</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Packing Checklist</h2>
+        <button
+          type="button"
+          onClick={onAddCategory}
+          className="text-xs font-medium text-indigo-500 hover:text-indigo-600 flex items-center"
+        >
+          <Plus className="w-4 h-4 mr-1" />
+          Add section
+        </button>
+      </div>
+
       {Object.entries(packingList).map(([category, items]) => (
         <PackingCategoryCard
           key={category}
@@ -577,6 +631,8 @@ function PackingTab({
           onChangeName={onChangeItemName}
           onAddItem={onAddItem}
           onRemoveItem={onRemoveItem}
+          onRenameCategory={onRenameCategory}
+          onRemoveCategory={onRemoveCategory}
         />
       ))}
     </div>
@@ -915,6 +971,42 @@ export default function App() {
     }));
   };
 
+    const addPackingCategory = () => {
+    const baseName = 'New section';
+    let name = baseName;
+    let counter = 1;
+
+    // avoid duplicate keys
+    while (packingList[name]) {
+      counter += 1;
+      name = `${baseName} ${counter}`;
+    }
+
+    setPackingList((prev) => ({
+      ...prev,
+      [name]: [],
+    }));
+  };
+
+  const renamePackingCategory = (oldName, newName) => {
+    if (!newName || oldName === newName || packingList[newName]) return;
+
+    setPackingList((prev) => {
+      const { [oldName]: items, ...rest } = prev;
+      return {
+        ...rest,
+        [newName]: items,
+      };
+    });
+  };
+
+  const removePackingCategory = (name) => {
+    setPackingList((prev) => {
+      const { [name]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
   // expense handlers
   const addExpense = (e) => {
     e.preventDefault();
@@ -1029,6 +1121,9 @@ export default function App() {
             onChangeItemName={updatePackingItemName}
             onAddItem={addPackingItem}
             onRemoveItem={removePackingItem}
+            onAddCategory={addPackingCategory}
+            onRenameCategory={renamePackingCategory}
+            onRemoveCategory={removePackingCategory}
           />
         )}
 

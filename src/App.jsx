@@ -709,10 +709,11 @@ function ExpenseForm({
     });
   };
 
+
   return (
-    <form onSubmit={onSubmit} className="space-y-4 p-4 border rounded">
+    <form onSubmit={onSubmit} className="bg-indigo-50 p-5 border border-indigo-100 rounded-2xl space-y-4">
       <div>
-        <label className="block font-medium mb-1">What was it for?</label>
+        <label className="text-sm font-medium text-slate-700 leading-loose">What was it for?</label>
         <input
           type="text"
           value={newExpense.desc}
@@ -726,7 +727,7 @@ function ExpenseForm({
 
       <div className="flex space-x-2">
         <div className="flex-1">
-          <label className="block font-medium mb-1">Amount</label>
+          <label className="text-sm font-medium text-slate-700 leading-loose">Amount</label>
           <input
             type="number"
             step="0.01"
@@ -740,13 +741,13 @@ function ExpenseForm({
         </div>
 
         <div>
-          <label className="block font-medium mb-1">Currency</label>
+          <label className="text-sm font-medium text-slate-700 leading-loose">Currency</label>
           <select
             value={newExpense.currency}
             onChange={(e) =>
               onChangeNewExpense({ ...newExpense, currency: e.target.value })
             }
-              className="px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"
+              className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"
           >
             <option value="KRW">KRW</option>
             <option value="HKD">HKD</option>
@@ -756,7 +757,7 @@ function ExpenseForm({
       </div>
 
       <div>
-        <label className="block font-medium mb-1">Category</label>
+        <label className="text-sm font-medium text-slate-700 leading-loose">Category</label>
         <div className="flex flex-wrap gap-2">
           {PRESET_CATEGORIES.map((cat) => (
             <button
@@ -778,7 +779,7 @@ function ExpenseForm({
       </div>
 
       <div>
-        <label className="block font-medium mb-1">Split among:</label>
+        <label className="text-sm font-medium text-slate-700 leading-loose">Split among:</label>
         <div className="flex flex-wrap gap-2">
           {friends.map((f) => (
             <button
@@ -800,7 +801,7 @@ function ExpenseForm({
       <div>
         <button
           type="submit"
-          className="w-full bg-indigo-500 text-white font-medium py-3 rounded-xl shadow-md">
+          className="w-full bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-md">
         Add Expense
         </button>
       </div>
@@ -929,10 +930,10 @@ function ExpensesTab({
         <button
           type="button"
           onClick={() => setShowAdd((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-slate-700"
+          className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-slate-700"
         >
-          <span>Add Expense</span>
-          <span className="text-xs text-slate-400">
+          <span>Add Expense 💰 </span>
+          <span className="text-xs text-indigo-600">
             {showAdd ? 'Hide' : 'Show'}
           </span>
         </button>
@@ -952,7 +953,7 @@ function ExpensesTab({
       <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-slate-800 text-sm">
-            Expense Summary
+            Expense Summary 📊
           </h3>
           <select
             value={summaryPerson}

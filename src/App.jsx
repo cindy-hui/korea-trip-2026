@@ -13,6 +13,8 @@ import {
   ArrowRight,
   X,
   AlertCircle,
+  GripVertical,
+  ChevronDown,
 } from 'lucide-react';
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
@@ -293,12 +295,27 @@ function ItineraryItem({
   onFieldChange,
   onRemove,
   isLast,
+  index,
+  isDraggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  draggedItemIndex,
 }) {
+  const isDragging = draggedItemIndex === index;
+
   return (
-    <li className="flex gap-3 items-start group">
-      <div className="flex flex-col items-center mt-1">
-        <div className="w-2 h-2 rounded-full bg-indigo-300" />
-        {!isLast && <div className="w-px h-full bg-indigo-100 mt-1 mb-1" />}
+    <li
+      className={`flex gap-3 items-start group ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${isDragging ? 'opacity-50' : ''}`}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+      <div className="flex flex-col items-center mt-1.5 flex-shrink-0">
+        <div className="w-2 h-2 rounded-full bg-indigo-300 relative z-10" />
       </div>
 
       <div className="flex-1">
@@ -333,21 +350,10 @@ function ItineraryItem({
                 className="w-full text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
-            <button
-              onClick={() => onRemove(dayId, item.id)}
-              className="text-slate-400 hover:text-red-500 mt-1"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
           </div>
         ) : (
           <>
             <p className="text-sm font-medium leading-snug">{item.text}</p>
-            {item.tips && (
-              <p className="text-xs text-slate-500 mt-1 bg-slate-50 p-2 rounded-md border border-slate-100">
-                💡 {item.tips}
-              </p>
-            )}
             {item.mapQuery && (
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -355,14 +361,33 @@ function ItineraryItem({
                 )}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center text-xs text-blue-500 mt-1.5 hover:underline"
+                className="inline-flex items-center text-xs text-blue-500 mt-1 hover:underline"
               >
                 <Map className="w-3 h-3 mr-1" /> View Map
               </a>
             )}
+            {item.tips && (
+              <p className="text-xs text-slate-500 mt-1 bg-slate-50 p-2 rounded-md border border-slate-100">
+                💡 {item.tips}
+              </p>
+            )}
           </>
         )}
       </div>
+
+      {isDraggable && (
+        <div className="flex flex-col items-center gap-2 flex-shrink-0">
+          <div className="p-1.5 transition-colors cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600">
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <button
+            onClick={() => onRemove(dayId, item.id)}
+            className="text-slate-400 hover:text-red-500 p-1.5 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </li>
   );
 }
@@ -370,34 +395,154 @@ function ItineraryItem({
 function ItineraryDayCard({
   day,
   isEditing,
+  isCollapsed,
   onFieldChange,
   onAddItem,
   onRemoveItem,
+  onReorderItems,
+  onMoveItem,
+  onToggleCollapse,
+  onToggleEdit,
 }) {
+  const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragStart = (e, index) => {
+    setDraggedItemIndex(index);
+    setDropTargetIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      sourceDayId: day.id,
+      sourceIndex: index
+    }));
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetIndex(index);
+    setIsDragOver(true);
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    const dataStr = e.dataTransfer.getData('application/json');
+    if (!dataStr) {
+      setDraggedItemIndex(null);
+      setDropTargetIndex(null);
+      setIsDragOver(false);
+      return;
+    }
+
+    const { sourceDayId, sourceIndex } = JSON.parse(dataStr);
+
+    // If dropping on same day and same position, do nothing
+    if (sourceDayId === day.id && sourceIndex === dropIndex) {
+      setDraggedItemIndex(null);
+      setDropTargetIndex(null);
+      setIsDragOver(false);
+      return;
+    }
+
+    if (sourceDayId === day.id) {
+      // Reorder within the same day
+      onReorderItems(day.id, sourceIndex, dropIndex);
+    } else {
+      // Move from another day
+      onMoveItem(sourceDayId, day.id, sourceIndex, dropIndex);
+    }
+
+    setDraggedItemIndex(null);
+    setDropTargetIndex(null);
+    setIsDragOver(false);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemIndex(null);
+    setDropTargetIndex(null);
+    setIsDragOver(false);
+  };
+
   return (
-    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-      <div className="mb-4">
-        <h3 className="text-lg font-bold text-slate-800">{day.day}</h3>
-        <p className="text-xs font-medium text-indigo-400 uppercase tracking-wider">
-          {day.date}
-        </p>
+    <div
+      className={`bg-white p-5 rounded-2xl shadow-sm border transition-all ${isDragOver ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-100'}`}
+      onDragLeave={() => {
+        setIsDragOver(false);
+        setDropTargetIndex(null);
+      }}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <button
+          onClick={onToggleCollapse}
+          className="flex items-center justify-center text-sm font-medium text-slate-500 hover:text-slate-700 p-1 mr-2 flex-shrink-0 transition-colors"
+          aria-label={isCollapsed ? "Expand" : "Collapse"}
+        >
+          <ChevronDown className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />
+        </button>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-slate-800">{day.day}</h3>
+            {isCollapsed && (
+              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                {day.items.length}
+              </span>
+            )}
+          </div>
+          <p className="text-xs font-medium text-indigo-400 uppercase tracking-wider">
+            {day.date}
+          </p>
+        </div>
+        <button
+          onClick={onToggleEdit}
+          className="flex items-center justify-center text-sm font-medium text-indigo-500 bg-indigo-50 p-2 rounded-full flex-shrink-0 hover:bg-indigo-100 transition-colors"
+          aria-label={isEditing ? "Save" : "Edit"}
+        >
+          {isEditing ? (
+            <Save className="w-4 h-4" />
+          ) : (
+            <Edit3 className="w-4 h-4" />
+          )}
+        </button>
       </div>
 
-      <ul className="space-y-4">
-        {day.items.map((item, idx) => (
-          <ItineraryItem
-            key={item.id}
-            dayId={day.id}
-            item={item}
-            isEditing={isEditing}
-            onFieldChange={onFieldChange}
-            onRemove={onRemoveItem}
-            isLast={idx === day.items.length - 1}
-          />
-        ))}
-      </ul>
-
       {isEditing && (
+        <p className="text-xs text-slate-500 mb-3 flex items-center">
+          <GripVertical className="w-3 h-3 mr-1.5 text-slate-400" />
+          Drag items to reorder or move to other days
+        </p>
+      )}
+
+      {!isCollapsed && (
+        <ul className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+          {day.items.map((item, idx) => (
+            <React.Fragment key={item.id}>
+              {dropTargetIndex === idx && draggedItemIndex !== idx && (
+                <div className="relative h-1 bg-indigo-500 rounded-full -my-1.5 shadow-sm">
+                  <div className="absolute inset-0 bg-indigo-400 rounded-full animate-pulse" />
+                </div>
+              )}
+              <ItineraryItem
+                dayId={day.id}
+                item={item}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onRemove={onRemoveItem}
+                isLast={idx === day.items.length - 1}
+                index={idx}
+                isDraggable={isEditing}
+                onDragStart={isEditing ? (e) => handleDragStart(e, idx) : undefined}
+                onDragOver={(e) => handleDragOver(e, idx)}
+                onDrop={(e) => handleDrop(e, idx)}
+                onDragEnd={handleDragEnd}
+                draggedItemIndex={draggedItemIndex}
+              />
+            </React.Fragment>
+          ))}
+        </ul>
+      )}
+
+      {isEditing && !isCollapsed && (
         <button
           onClick={() => onAddItem(day.id)}
           className="w-full mt-4 py-2 flex items-center justify-center text-xs font-medium text-slate-500 border border-dashed border-slate-300 rounded-lg hover:bg-slate-50"
@@ -411,40 +556,39 @@ function ItineraryDayCard({
 
 function ItineraryTab({
   itinerary,
-  isEditing,
-  onToggleEdit,
   onFieldChange,
   onAddItem,
   onRemoveItem,
+  onReorderItems,
+  onMoveItem,
 }) {
+  const [editingDayId, setEditingDayId] = useState(null);
+  const [collapsedDays, setCollapsedDays] = useState({});
+
+  const toggleDayCollapse = (dayId) => {
+    setCollapsedDays((prev) => ({
+      ...prev,
+      [dayId]: !prev[dayId],
+    }));
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Trip Itinerary</h2>
-        <button
-          onClick={onToggleEdit}
-          className="flex items-center text-sm font-medium text-indigo-500 bg-indigo-50 px-3 py-1.5 rounded-full"
-        >
-          {isEditing ? (
-            <>
-              <Save className="w-4 h-4 mr-1" /> Save
-            </>
-          ) : (
-            <>
-              <Edit3 className="w-4 h-4 mr-1" /> Edit
-            </>
-          )}
-        </button>
-      </div>
+      <h2 className="text-xl font-semibold">Trip Itinerary</h2>
 
       {itinerary.map((day) => (
         <ItineraryDayCard
           key={day.id}
           day={day}
-          isEditing={isEditing}
+          isEditing={editingDayId === day.id}
+          isCollapsed={collapsedDays[day.id] || false}
+          onToggleCollapse={() => toggleDayCollapse(day.id)}
           onFieldChange={onFieldChange}
           onAddItem={onAddItem}
           onRemoveItem={onRemoveItem}
+          onReorderItems={onReorderItems}
+          onMoveItem={onMoveItem}
+          onToggleEdit={() => setEditingDayId((prev) => (prev === day.id ? null : day.id))}
         />
       ))}
     </div>
@@ -941,7 +1085,7 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
                 >
                   <div className="p-3">
                     {/* Row 1: Category + Description + Actions */}
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-0.5">
                       {(() => {
                         const category = (exp.categoryTags || [exp.category])[0];
                         const colors = categoryColors[category] || categoryColors['Misc'];
@@ -958,17 +1102,17 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
                       <div className="flex gap-1 flex-shrink-0">
                         <button
                           onClick={() => onEdit(exp)}
-                          className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                           title="Edit expense"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
+                          <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => onRemove(exp.id)}
-                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                           title="Delete expense"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1517,7 +1661,6 @@ export default function App() {
   const [itinerary, setItinerary] = useState(INITIAL_ITINERARY);
   const [packingList, setPackingList] = useState(INITIAL_PACKING_LIST);
   const [expenses, setExpenses] = useState([]);
-  const [isEditingItinerary, setIsEditingItinerary] = useState(false);
   const [newExpense, setNewExpense] = useState(INITIAL_EXPENSE);
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseDateFilter, setExpenseDateFilter] = useState('All');
@@ -1599,21 +1742,18 @@ export default function App() {
     const savedItinerary = localStorage.getItem('korea_itinerary');
     const savedPacking = localStorage.getItem('korea_packing');
     const savedExpenses = localStorage.getItem('korea_expenses');
-    const savedEdit = localStorage.getItem('korea_itinerary_editing');
 
     if (savedItinerary) setItinerary(JSON.parse(savedItinerary));
     if (savedPacking) setPackingList(JSON.parse(savedPacking));
     if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
-    if (savedEdit) setIsEditingItinerary(savedEdit === 'true');
   }, []);
 
   useEffect(() => {
     localStorage.setItem('korea_itinerary', JSON.stringify(itinerary));
     localStorage.setItem('korea_packing', JSON.stringify(packingList));
     localStorage.setItem('korea_expenses', JSON.stringify(expenses));
-    localStorage.setItem('korea_itinerary_editing', String(isEditingItinerary));
     localStorage.setItem('korea_krw_rate', krwRate.toString());
-  }, [itinerary, packingList, expenses, isEditingItinerary, krwRate]);
+  }, [itinerary, packingList, expenses, krwRate]);
 
   // itinerary handlers
   const handleItineraryFieldChange = (dayId, itemId, field, value) => {
@@ -1658,6 +1798,46 @@ export default function App() {
           : day,
       ),
     );
+  };
+
+  const reorderItineraryItems = (dayId, fromIndex, toIndex) => {
+    setItinerary((prev) =>
+      prev.map((day) => {
+        if (day.id !== dayId) return day;
+
+        const newItems = [...day.items];
+        const [movedItem] = newItems.splice(fromIndex, 1);
+        newItems.splice(toIndex, 0, movedItem);
+
+        return {
+          ...day,
+          items: newItems,
+        };
+      }),
+    );
+  };
+
+  const moveItineraryItem = (sourceDayId, destDayId, sourceIndex, destIndex) => {
+    setItinerary((prev) => {
+      const sourceDay = prev.find((day) => day.id === sourceDayId);
+      if (!sourceDay) return prev;
+      const itemToMove = sourceDay.items[sourceIndex];
+      if (!itemToMove) return prev;
+
+      return prev.map((day) => {
+        if (day.id === sourceDayId) {
+          return {
+            ...day,
+            items: day.items.filter((_, idx) => idx !== sourceIndex),
+          };
+        } else if (day.id === destDayId) {
+          const newItems = [...day.items];
+          newItems.splice(destIndex, 0, itemToMove);
+          return { ...day, items: newItems };
+        }
+        return day;
+      });
+    });
   };
 
   // packing handlers
@@ -1916,11 +2096,11 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-screen bg-indigo-50/30 text-slate-800 font-sans">
-      <header className="pt-12 pb-6 px-6 bg-white shadow-sm sticky top-0 z-10 rounded-b-3xl">
-        <h1 className="text-2xl font-bold text-indigo-500">
+      <header className="pt-6 pb-4 px-6 bg-white shadow-sm sticky top-0 z-10 rounded-b-3xl">
+        <h1 className="text-xl font-bold text-indigo-500">
           Seoul 2026 🩷 ✨
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-xs text-slate-500 mt-0.5">
           April 6 - April 10 • Cindy, Leena, Mel, Soobin
         </p>
       </header>
@@ -1929,11 +2109,11 @@ export default function App() {
         {activeTab === 'itinerary' && (
           <ItineraryTab
             itinerary={itinerary}
-            isEditing={isEditingItinerary}
-            onToggleEdit={() => setIsEditingItinerary((v) => !v)}
             onFieldChange={handleItineraryFieldChange}
             onAddItem={addItineraryItem}
             onRemoveItem={removeItineraryItem}
+            onReorderItems={reorderItineraryItems}
+            onMoveItem={moveItineraryItem}
           />
         )}
 

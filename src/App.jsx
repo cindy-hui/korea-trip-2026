@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   MapPin,
   ListChecks,
@@ -11,15 +11,11 @@ import {
   Map,
   CheckCircle2,
   ArrowRight,
+  X,
 } from 'lucide-react';
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
-const FX_RATES = {
-  // base: 1 unit of key = value in HKD
-  HKD: 1,
-  KRW: 0.0052, // adjust to your preferred fixed rate
-  USD: 7.8,
-};
+
 const INITIAL_ITINERARY = [
   {
     id: 'day1',
@@ -649,105 +645,116 @@ function PackingTab({
 }
 
 // Expenses components
-function SettlementsSummary({ settlements }) {
+function SettlementsSummary({ settlements, toHKD }) {
   return (
-    <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100">
-      <h3 className="font-bold text-indigo-800 mb-3 text-sm uppercase tracking-wider">
-        Who owes whom?
-      </h3>
+    <>
       {settlements.length === 0 ? (
-        <p className="text-sm text-indigo-600">Everyone is settled up! 🎉</p>
+        <div className="flex items-center justify-center py-8 text-indigo-700">
+          <CheckCircle2 className="w-6 h-6 mr-2" />
+          <span className="font-medium">Everyone is settled up!</span>
+        </div>
       ) : (
-        <ul className="space-y-2">
-          {settlements.map((s, idx) => (
-            <li
-              key={idx}
-              className="flex items-center justify-between text-sm bg-white p-3 rounded-xl shadow-sm"
-            >
-              <span className="font-medium text-slate-700">{s.from}</span>
-              <div className="flex items-center text-indigo-400 px-2">
-                <ArrowRight className="w-4 h-4 mx-1" />
-                <span className="font-bold font-mono text-xs">
-                  {s.amount.toLocaleString()} ₩
-                </span>
-                <ArrowRight className="w-4 h-4 mx-1" />
-              </div>
-              <span className="font-medium text-slate-700">{s.to}</span>
-            </li>
-          ))}
+        <ul className="space-y-2.5">
+          {settlements.map((s, idx) => {
+            const hkd = toHKD(s.amount, 'KRW');
+            return (
+              <li
+                key={idx}
+                className="flex items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-indigo-50"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-700 text-sm">{s.from}</span>
+                  <ArrowRight className="w-4 h-4 text-indigo-400" />
+                  <span className="font-mono font-bold text-sm text-slate-700">
+                    {s.amount.toLocaleString()} ₩
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    (~{Math.round(hkd).toLocaleString()} HKD)
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-indigo-400" />
+                  <span className="font-semibold text-slate-700 text-sm">{s.to}</span>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
-    </div>
+    </>
   );
 }
 
 function ExpenseForm({
   friends,
-  newExpense,
-  onChangeNewExpense,
+  expense, // For editing mode
+  formData,
+  onChangeFormData,
   onToggleParticipant,
   onSubmit,
+  isEditing = false,
+  formRef,
 }) {
   const PRESET_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'];
 
-  const handleAddTag = (tag) => {
-    const clean = tag.trim();
-    if (!clean || newExpense.categoryTags.includes(clean)) return;
-    onChangeNewExpense({
-      ...newExpense,
-      categoryTags: [...newExpense.categoryTags, clean],
-      category: clean,
-    });
+  // Category emoji mapping
+  const categoryEmojis = {
+    'Food': '🍔',
+    'Transport': '🚗',
+    'Shopping': '🛍️',
+    'Activities': '🎲',
+    'Accommodation': '🏠',
+    'Misc': '📦',
   };
 
-  const handleRemoveTag = (tag) => {
-    const nextTags = newExpense.categoryTags.filter((t) => t !== tag);
-    onChangeNewExpense({
-      ...newExpense,
-      categoryTags: nextTags,
-      category: nextTags[0] || 'Others',
-    });
+  // Category color mapping - all categories use light indigo
+  const categoryColors = {
+    'Food': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Transport': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Shopping': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Activities': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Accommodation': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Misc': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
   };
 
+  const data = formData;
 
   return (
-    <form onSubmit={onSubmit} className="bg-white p-5 border border-indigo-200 rounded-2xl space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} className="space-y-2.5">
       <div>
-        <label className="text-sm font-medium text-slate-700 leading-loose">What was it for?</label>
+        <label className="text-xs font-medium text-slate-700">What was it for?</label>
         <input
           type="text"
-          value={newExpense.desc}
+          value={data.desc}
           onChange={(e) =>
-            onChangeNewExpense({ ...newExpense, desc: e.target.value })
+            onChangeFormData(prev => ({ ...prev, desc: e.target.value }))
           }
-          className="w-full p-3 text-sm bg-slate-50 border border-slate-200 rounded-xl"
+          className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg"
           required
         />
       </div>
 
       <div className="flex space-x-2">
         <div className="flex-1">
-          <label className="text-sm font-medium text-slate-700 leading-loose">Amount</label>
+          <label className="text-xs font-medium text-slate-700">Amount</label>
           <input
             type="number"
             step="0.01"
-            value={newExpense.amount}
+            value={data.amount}
             onChange={(e) =>
-              onChangeNewExpense({ ...newExpense, amount: e.target.value })
+              onChangeFormData(prev => ({ ...prev, amount: e.target.value }))
             }
-            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl font-mono"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono"
             required
           />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700 leading-loose">Currency</label>
+          <label className="text-xs font-medium text-slate-700">Currency</label>
           <select
-            value={newExpense.currency}
+            value={data.currency}
             onChange={(e) =>
-              onChangeNewExpense({ ...newExpense, currency: e.target.value })
+              onChangeFormData(prev => ({ ...prev, currency: e.target.value }))
             }
-              className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
           >
             <option value="KRW">KRW</option>
             <option value="HKD">HKD</option>
@@ -756,40 +763,73 @@ function ExpenseForm({
         </div>
       </div>
 
+      <div className="flex space-x-2">
+        <div className="flex-1">
+          <label className="text-xs font-medium text-slate-700">Paid by</label>
+          <select
+            value={data.payer}
+            onChange={(e) =>
+              onChangeFormData(prev => ({ ...prev, payer: e.target.value }))
+            }
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+          >
+            {friends.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex-1">
+          <label className="text-xs font-medium text-slate-700">Date</label>
+          <input
+            type="date"
+            value={data.date}
+            onChange={(e) =>
+              onChangeFormData(prev => ({ ...prev, date: e.target.value }))
+            }
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+            required
+          />
+        </div>
+      </div>
+
       <div>
-        <label className="text-sm font-medium text-slate-700 leading-loose">Category</label>
-        <div className="flex flex-wrap gap-2">
+        <label className="text-xs font-medium text-slate-700">Category</label>
+        <div className="flex flex-wrap gap-1.5">
           {PRESET_CATEGORIES.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() =>
-                onChangeNewExpense({ ...newExpense, category: cat })
+                onChangeFormData(prev => ({ ...prev, category: cat, categoryTags: [cat] }))
               }
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border ${
-                newExpense.category === cat
-                  ? 'bg-indigo-600 text-white border-indigo-600'
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
+                data.category === cat
+                  ? `${categoryColors[cat].bg} ${categoryColors[cat].text} ${categoryColors[cat].border}`
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
               }`}
             >
-              {cat}
+              <span>{categoryEmojis[cat]}</span>
+              <span>{cat}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div>
-        <label className="text-sm font-medium text-slate-700 leading-loose">Split among:</label>
-        <div className="flex flex-wrap gap-2">
+      <div className="mb-3">
+        <label className="text-xs font-medium text-slate-700">Split among</label>
+        <div className="flex flex-wrap gap-1.5">
           {friends.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => onToggleParticipant(f)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full border ${
-                newExpense.participants.includes(f)
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-white text-gray-500'
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border ${
+                data.participants.includes(f)
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-gray-700 border-gray-300'
               }`}
             >
               {f}
@@ -797,25 +837,35 @@ function ExpenseForm({
           ))}
         </div>
       </div>
-
-      <div>
-        <button
-          type="submit"
-          className="w-full bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-md">
-        Add Expense
-        </button>
-      </div>
     </form>
   );
 }
 
-function ExpensesList({ groupedByDate, onRemove }) {
+function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
   const dates = Object.keys(groupedByDate).sort((a, b) => (a < b ? 1 : -1));
 
+  // Category emoji mapping for expense cards
+  const categoryEmojis = {
+    'Food': '🍔',
+    'Transport': '🚗',
+    'Shopping': '🛍️',
+    'Activities': '🎲',
+    'Accommodation': '🏠',
+    'Misc': '📦',
+  };
+
+  // Category circle color mapping
+  const categoryColors = {
+    'Food': { bg: 'bg-yellow-50', text: 'text-yellow-700' },
+    'Transport': { bg: 'bg-red-50', text: 'text-red-700' },
+    'Shopping': { bg: 'bg-pink-50', text: 'text-pink-700' },
+    'Activities': { bg: 'bg-orange-50', text: 'text-orange-700' },
+    'Accommodation': { bg: 'bg-blue-50', text: 'text-blue-700' },
+    'Misc': { bg: 'bg-stone-200', text: 'text-stone-700' },
+  };
 
   return (
     <div className="space-y-3">
-      <h3 className="font-bold text-slate-800">Recent Expenses</h3>
       {dates.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-4">
           No expenses found.
@@ -832,31 +882,61 @@ function ExpensesList({ groupedByDate, onRemove }) {
               return (
                 <div
                   key={exp.id}
-                  className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center group"
+                  className="bg-white rounded-lg border border-slate-200"
                 >
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">
-                      {exp.desc}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {(exp.categoryTags || [exp.category]).join(', ')} • Paid
-                      by {exp.payer} • Split {exp.participants.length} ways
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="font-mono font-bold text-sm text-slate-700">
-                      {exp.amount.toLocaleString()} {exp.currency || 'KRW'}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      ≈ {Math.round(hkd).toLocaleString()} HKD •{' '}
-                      {Math.round(krw).toLocaleString()} KRW
-                    </span>
-                    <button
-                      onClick={() => onRemove(exp.id)}
-                      className="text-slate-300 hover:text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <div className="p-3">
+                    {/* Row 1: Category + Description + Actions */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {(() => {
+                        const category = (exp.categoryTags || [exp.category])[0];
+                        const colors = categoryColors[category] || categoryColors['Misc'];
+                        const emoji = categoryEmojis[category] || '📦';
+                        return (
+                          <span className={`w-6 h-6 flex items-center justify-center text-sm ${colors.bg} ${colors.text} rounded-md flex-shrink-0`}>
+                            {emoji}
+                          </span>
+                        );
+                      })()}
+                      <h4 className="text-sm font-medium text-slate-800 leading-snug flex-1 truncate">
+                        {exp.desc}
+                      </h4>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => onEdit(exp)}
+                          className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          title="Edit expense"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onRemove(exp.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete expense"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Paid by and split info */}
+                    <div className="text-[10px] text-slate-400">
+                      Paid by {exp.payer} • Split {exp.participants.length} ways
+                    </div>
+
+                    {/* Row 3: Amount */}
+                    <div className="flex justify-end items-center gap-2">
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        ≈ {Math.round(hkd).toLocaleString()} HKD
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-sm text-slate-800">
+                          {exp.amount.toLocaleString()}
+                        </span>
+                        <span className="text-xs text-slate-600 ml-0.5 font-mono">
+                          {exp.currency || 'KRW'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -879,6 +959,12 @@ function ExpensesTab({
   onToggleParticipant,
   onAddExpense,
   onRemoveExpense,
+  onStartEditExpense,
+  editingExpenseId,
+  editFormData,
+  onChangeEditFormData,
+  onCancelEdit,
+  onUpdateExpense,
   categoryFilter,
   onChangeCategoryFilter,
   dateFilter,
@@ -886,159 +972,459 @@ function ExpensesTab({
   categoryTotalsHKD,
   summaryPerson,
   onChangeSummaryPerson,
+  toHKD,
+  toKRW,
+  krwRate,
+  setKrwRate,
 }) {
   const allCategories = Array.from(
     new Set(
       expenses.flatMap((e) => e.categoryTags || [e.category])
     )
-  );
+  ).sort();
 
-  const [showAdd, setShowAdd] = useState(true); // collapse behaviour
+  // Shared constants with ExpenseForm
+  const PRESET_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'];
+  const categoryEmojis = {
+    'Food': '🍔',
+    'Transport': '🚗',
+    'Shopping': '🛍️',
+    'Activities': '🎲',
+    'Accommodation': '🏠',
+    'Misc': '📦',
+  };
+
+  const [sheetMode, setSheetMode] = useState(null); // 'add' | 'edit' | null
+  const [topCardIndex, setTopCardIndex] = useState(0);
+  const formRef = useRef(null);
+
+  // Sync bottom sheet with editingExpenseId prop (using useLayoutEffect to prevent flicker)
+  useLayoutEffect(() => {
+    if (editingExpenseId) {
+      setSheetMode('edit');
+    }
+  }, [editingExpenseId]);
+
+  useLayoutEffect(() => {
+    if (!editingExpenseId && sheetMode === 'edit') {
+      setSheetMode(null);
+    }
+  }, [editingExpenseId, sheetMode]);
+
+  // Close sheet on Escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && sheetMode) {
+        if (sheetMode === 'edit') {
+          onCancelEdit();
+        }
+        setSheetMode(null);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [sheetMode, onCancelEdit]);
+
+  // Participant toggle handler works for both add and edit modes
+  const handleToggleParticipant = (friend) => {
+    if (sheetMode === 'edit') {
+      // Edit mode: toggle in editFormData
+      onChangeEditFormData((prev) => ({
+        ...prev,
+        participants: prev.participants.includes(friend)
+          ? prev.participants.filter((p) => p !== friend)
+          : [...prev.participants, friend],
+      }));
+    } else {
+      // Add mode: use the passed handler
+      onToggleParticipant(friend);
+    }
+  };
+
+  const closeSheet = () => {
+    if (sheetMode === 'edit') {
+      onCancelEdit();
+    }
+    setSheetMode(null);
+  };
+
+  const openAddSheet = () => {
+    if (editingExpenseId) {
+      onCancelEdit(); // cancel any ongoing edit
+    }
+    setSheetMode('add');
+  };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <>
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-semibold">Split the Bill</h2>
-        <div className="flex gap-2">
-          <select
-            value={categoryFilter}
-            onChange={(e) => onChangeCategoryFilter(e.target.value)}
-            className="px-2 py-1 text-[10px] bg-white border border-slate-200 rounded-full"
-          >
-            <option value="All">All categories</option>
-            {allCategories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select
-            value={dateFilter}
-            onChange={(e) => onChangeDateFilter(e.target.value)}
-            className="px-2 py-1 text-[10px] bg-white border border-slate-200 rounded-full"
-          >
-            <option value="All">All dates</option>
-            <option value="Today">Today</option>
-            <option value="Trip">Trip dates</option>
-          </select>
-        </div>
+        <h2 className="text-xl font-semibold">Shared Expenses</h2>
       </div>
 
-      <SettlementsSummary settlements={settlements} />
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-        <button
-          type="button"
-          onClick={() => setShowAdd((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-3 text-sm font-bold text-slate-700"
+      {/* Top Cards Carousel */}
+      <div className="flex flex-col gap-2">
+        {/* Carousel */}
+        <div
+          id="top-cards-carousel"
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth -mx-4 px-4 scrollbar-hide min-h-[350px]"
+          onScroll={() => {
+            const container = document.getElementById('top-cards-carousel');
+            if (container) {
+              const scrollPos = container.scrollLeft;
+              const cardWidth = container.scrollWidth / 2;
+              const newIndex = Math.round(scrollPos / cardWidth);
+              if (newIndex !== topCardIndex && newIndex >= 0 && newIndex <= 1) {
+                setTopCardIndex(newIndex);
+              }
+            }
+          }}
         >
-          <span>Add Expense 💰 </span>
-          <span className="text-xs text-indigo-600">
-            {showAdd ? 'Hide' : 'Show'}
-          </span>
-        </button>
-        {showAdd && (
-          <div className="px-5 pb-5">
-            <ExpenseForm
-              friends={FRIENDS}
-              newExpense={newExpense}
-              onChangeNewExpense={onChangeNewExpense}
-              onToggleParticipant={onToggleParticipant}
-              onSubmit={onAddExpense}
-            />
+          {/* Card 1: Who owes whom? */}
+          <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
+            <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
+              <div className="mb-3">
+                <h3 className="font-bold text-indigo-800 text-base">💰 Who owes whom?</h3>
+                <p className="text-xs text-indigo-600 mt-0.5">
+                  Settlements between friends
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-slate-600">Conversion: 1 KRW =</span>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    value={krwRate}
+                    onChange={(e) => setKrwRate(parseFloat(e.target.value) || 0)}
+                    className="w-20 px-2 py-0.5 text-xs font-mono border border-indigo-200 rounded focus:outline-none focus:border-indigo-400"
+                    title="Set KRW to HKD conversion rate"
+                  />
+                  <span className="text-xs text-slate-600">HKD</span>
+                </div>
+              </div>
+              <SettlementsSummary settlements={settlements} toHKD={toHKD} />
+            </div>
           </div>
-        )}
+
+          {/* Card 2: Expense Summary - matching style */}
+          <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
+            <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-slate-800 text-base">📊 Expense Summary</h3>
+                <select
+                  value={summaryPerson}
+                  onChange={(e) => onChangeSummaryPerson(e.target.value)}
+                  className="px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                >
+                  <option value="All">All friends</option>
+                  {FRIENDS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <PieChart data={categoryTotalsHKD} />
+            </div>
+          </div>
+        </div>
+
+        {/* Dot Navigation */}
+        <div className="flex justify-center items-center gap-2">
+          <button
+            onClick={() => {
+              setTopCardIndex(0);
+              const container = document.getElementById('top-cards-carousel');
+              if (container) container.scrollTo({ left: 0, behavior: 'smooth' });
+            }}
+            className="transition-all duration-200"
+            aria-label="View Who owes whom"
+          >
+            {topCardIndex === 0 ? (
+              <div className="w-4 h-1 bg-indigo-600 rounded-full" />
+            ) : (
+              <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setTopCardIndex(1);
+              const container = document.getElementById('top-cards-carousel');
+              if (container) {
+                const cardWidth = container.querySelector('div > div').offsetWidth;
+                container.scrollTo({ left: cardWidth, behavior: 'smooth' });
+              }
+            }}
+            className="transition-all duration-200"
+            aria-label="View Expense Summary"
+          >
+            {topCardIndex === 1 ? (
+              <div className="w-4 h-1 bg-indigo-600 rounded-full" />
+            ) : (
+              <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-800 text-sm">
-            Expense Summary 📊
-          </h3>
-          <select
-            value={summaryPerson}
-            onChange={(e) => onChangeSummaryPerson(e.target.value)}
-            className="px-2 py-1 text-[10px] bg-slate-50 border border-slate-200 rounded-full"
-          >
-            <option value="All">All friends</option>
-            {FRIENDS.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
+      {/* Add Expense CTA Button */}
+      <button
+        type="button"
+        onClick={openAddSheet}
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+      >
+        <Plus className="w-5 h-5" />
+        <span>Add Expense</span>
+      </button>
+
+      {/* Recent Expenses Section */}
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2.5">
+            <h3 className="font-bold text-slate-800 text-base">🧾 Recent Expenses</h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFilter === 'All' ? '' : dateFilter}
+                onChange={(e) => onChangeDateFilter(e.target.value || 'All')}
+                className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg w-auto"
+              />
+              <button
+                onClick={() => onChangeDateFilter('All')}
+                className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 whitespace-nowrap"
+              >
+                All
+              </button>
+            </div>
+          </div>
+          {/* Category filter chips */}
+          <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 -mb-1 scrollbar-hide">
+            <button
+              type="button"
+              onClick={() => onChangeCategoryFilter('All')}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 flex-shrink-0 ${
+                categoryFilter === 'All'
+                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              All
+            </button>
+            {PRESET_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => onChangeCategoryFilter(cat)}
+                className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 flex-shrink-0 ${
+                  categoryFilter === cat
+                    ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                }`}
+              >
+                <span>{categoryEmojis[cat]}</span>
+                <span>{cat}</span>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
-        <p className="text-[11px] text-slate-500">
-          Showing category breakdown in HKD based on who paid / participated.
-        </p>
-        <PieChart data={categoryTotalsHKD} />
+        <ExpensesList
+          groupedByDate={groupedByDate}
+          onRemove={onRemoveExpense}
+          onEdit={onStartEditExpense}
+          toHKD={toHKD}
+          toKRW={toKRW}
+        />
       </div>
-      <ExpensesList groupedByDate={groupedByDate} onRemove={onRemoveExpense} />
+
+      {/* Modal */}
+      {sheetMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+            onClick={closeSheet}
+          ></div>
+          {/* Modal Content */}
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
+              <h3 className="text-lg font-bold text-slate-800">
+                {sheetMode === 'add' ? 'Add Expense' : 'Edit Expense'}
+              </h3>
+              <button
+                onClick={closeSheet}
+                className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Form content with scroll */}
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              <div className="border border-indigo-200 rounded-xl p-3">
+                <ExpenseForm
+                  friends={FRIENDS}
+                  formRef={formRef}
+                  formData={sheetMode === 'add' ? newExpense : editFormData}
+                  onChangeFormData={
+                    sheetMode === 'add' ? onChangeNewExpense : onChangeEditFormData
+                  }
+                  onToggleParticipant={handleToggleParticipant}
+                  onSubmit={
+                    sheetMode === 'add'
+                      ? (e) => {
+                          const success = onAddExpense(e);
+                          if (success) closeSheet();
+                        }
+                      : onUpdateExpense
+                  }
+                  isEditing={sheetMode === 'edit'}
+                />
+              </div>
+            </div>
+            {/* Submit Button */}
+            <div className="px-4 pb-4 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  if (formRef.current) {
+                    formRef.current.requestSubmit();
+                  }
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors"
+              >
+                {sheetMode === 'add' ? 'Add' : 'Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    </>
   );
 }
 
 function PieChart({ data }) {
-  const entries = Object.entries(data);
+  const entries = Object.entries(data)
+    .sort((a, b) => b[1] - a[1]); // Sort by value descending
   const total = entries.reduce((sum, [, value]) => sum + value, 0);
   if (total === 0) {
     return (
-      <p className="text-xs text-slate-400 text-center py-4">
-        No expenses to summarize yet.
-      </p>
+      <div className="flex items-center justify-center py-8">
+        <p className="text-sm text-slate-400 text-center">
+          No expenses to display yet.
+        </p>
+      </div>
     );
   }
 
+  // Category color mapping - fill uses -200, stroke uses -400, text uses darker -600
+  const categoryColorMap = {
+    'Food': { stroke: '#FACC15', fill: '#FEF9C3', text: '#CA8A04' },       // yellow-400/200, text: yellow-600
+    'Transport': { stroke: '#F87171', fill: '#FEE2E2', text: '#DC2626' }, // red-400/200, text: red-600
+    'Shopping': { stroke: '#F472B6', fill: '#FBCFE8', text: '#DB2777' },  // pink-400/200, text: pink-600
+    'Activities': { stroke: '#FB923C', fill: '#FFDAB8', text: '#C2410c' }, // orange-400/200, text: orange-600
+    'Accommodation': { stroke: '#60A5FA', fill: '#BFDBFE', text: '#2563EB' }, // blue-400/200, text: blue-600
+    'Misc': { stroke: '#A8A29E', fill: '#E7E5E4', text: '#57534E' },       // stone-400/200, text: stone-600
+  };
+
+  // Calculate donut segments
   let cumulative = 0;
   const radius = 40;
-  const colors = ['#6366F1', '#F97316', '#22C55E', '#EC4899', '#0EA5E9'];
+  const innerRadius = 25;
 
   return (
-    <div className="flex items-center gap-4">
-      <svg viewBox="0 0 100 100" className="w-24 h-24">
-        {entries.map(([key, value], idx) => {
-          const startAngle = (cumulative / total) * 2 * Math.PI;
-          const slice = (value / total) * 2 * Math.PI;
-          const endAngle = startAngle + slice;
-          cumulative += value;
+    <div className="flex flex-col sm:flex-row items-center gap-6">
+      <div className="relative">
+        <svg viewBox="0 0 100 100" className="w-48 h-48 transform -rotate-90">
+          {entries.map(([key, value], idx) => {
+            const percentage = (value / total) * 100;
+            const startAngle = (cumulative / total) * 2 * Math.PI;
+            const slice = (value / total) * 2 * Math.PI;
+            const endAngle = startAngle + slice;
+            cumulative += value;
 
-          const x1 = 50 + radius * Math.cos(startAngle);
-          const y1 = 50 + radius * Math.sin(startAngle);
-          const x2 = 50 + radius * Math.cos(endAngle);
-          const y2 = 50 + radius * Math.sin(endAngle);
-          const largeArc = slice > Math.PI ? 1 : 0;
+            // Handle single slice (100%) by rendering it as nearly a full circle
+            // to avoid SVG arc rendering issues with full circles
+            const effectiveSlice = entries.length === 1 ? slice - 0.001 : slice;
+            const effectiveEndAngle = startAngle + effectiveSlice;
 
-          const d = `
-            M 50 50
-            L ${x1} ${y1}
-            A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}
-            Z
-          `;
+            const x1 = 50 + radius * Math.cos(startAngle);
+            const y1 = 50 + radius * Math.sin(startAngle);
+            const x2 = 50 + radius * Math.cos(effectiveEndAngle);
+            const y2 = 50 + radius * Math.sin(effectiveEndAngle);
+            const x3 = 50 + innerRadius * Math.cos(startAngle);
+            const y3 = 50 + innerRadius * Math.sin(startAngle);
+            const x4 = 50 + innerRadius * Math.cos(effectiveEndAngle);
+            const y4 = 50 + innerRadius * Math.sin(effectiveEndAngle);
 
+            const largeArc = effectiveSlice > Math.PI ? 1 : 0;
+
+            // Donut segment path
+            const d = `
+              M ${x1} ${y1}
+              A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}
+              L ${x4} ${y4}
+              A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x3} ${y3}
+              Z
+            `;
+
+            const colors = categoryColorMap[key] || categoryColorMap['Misc'];
+            return (
+              <path
+                key={key}
+                d={d}
+                fill={colors.fill}
+                stroke={colors.stroke}
+                strokeWidth="0.5"
+                className="transition-all hover:opacity-80"
+              />
+            );
+          })}
+          {/* Center text */}
+          <text
+            x="50"
+            y="50"
+            textAnchor="middle"
+            dominantBaseline="middle"
+            className="text-[9px] fill-slate-600 font-bold transform rotate-90 origin-center"
+          >
+            {Math.round(total).toLocaleString()}
+            <tspan x="50" dy="12" className="text-[7px] fill-slate-400 font-normal">
+              HKD
+            </tspan>
+          </text>
+        </svg>
+      </div>
+
+      <div className="flex-1 space-y-2.5 min-w-0">
+        {entries.map(([key, value]) => {
+          const percentage = (value / total) * 100;
+          const colors = categoryColorMap[key] || categoryColorMap['Misc'];
           return (
-            <path
-              key={key}
-              d={d}
-              fill={colors[idx % colors.length]}
-              stroke="#ffffff"
-              strokeWidth="0.5"
-            />
+            <div key={key} className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span
+                  className="w-3 h-3 rounded-sm flex-shrink-0 border"
+                  style={{ backgroundColor: colors.fill, borderColor: colors.stroke }}
+                />
+                <span className="text-xs font-medium text-slate-700 truncate">
+                  {key}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs tabular-nums">
+                <span className="text-slate-500 font-mono w-16 text-right">
+                  ${Math.round(value).toLocaleString()}
+                </span>
+                <span
+                  className="w-8 text-right font-bold"
+                  style={{ color: colors.text }}
+                >
+                  {percentage.toFixed(1)}%
+                </span>
+              </div>
+            </div>
           );
         })}
-      </svg>
-      <div className="space-y-1">
-        {entries.map(([key, value], idx) => (
-          <div key={key} className="flex items-center text-xs text-slate-600">
-            <span
-              className="w-2 h-2 rounded-full mr-2"
-              style={{ backgroundColor: colors[idx % colors.length] }}
-            />
-            <span className="flex-1">{key}</span>
-            <span className="font-mono text-[10px] text-slate-500">
-              {Math.round(value).toLocaleString()} HKD
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -1054,8 +1440,12 @@ export default function App() {
   const [isEditingItinerary, setIsEditingItinerary] = useState(false);
   const [newExpense, setNewExpense] = useState(INITIAL_EXPENSE);
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
-  const [expenseDateFilter, setExpenseDateFilter] = useState('All'); // All | Today | Trip
+  const [expenseDateFilter, setExpenseDateFilter] = useState('All');
   const [summaryPerson, setSummaryPerson] = useState('All');
+  const [krwRate, setKrwRate] = useState(() => {
+    const saved = localStorage.getItem('korea_krw_rate');
+    return saved ? parseFloat(saved) : 0.0052;
+  });
   // Category tags system
   const [categories, setCategories] = useState([
     'Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'
@@ -1064,6 +1454,22 @@ export default function App() {
   const [newCategory, setNewCategory] = useState('');
 
   const [selectedCategory, setSelectedCategory] = useState('food');
+
+  // Expense editing state
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editFormData, setEditFormData] = useState(INITIAL_EXPENSE);
+
+  const toHKD = (amount, currency) => {
+    if (!amount) return 0;
+    if (currency === 'KRW') return amount * krwRate;
+    if (currency === 'USD') return amount * 7.8;
+    return amount; // HKD or unknown
+  };
+
+  const toKRW = (amount, currency) => {
+    const hkd = toHKD(amount, currency);
+    return hkd / krwRate; // Convert HKD back to KRW
+  };
 
 
   const TRIP_START = '2026-04-06';
@@ -1077,12 +1483,8 @@ export default function App() {
       tags.includes(expenseCategoryFilter);
 
     let matchDate = true;
-    if (expenseDateFilter === 'Trip') {
-      matchDate = exp.date >= TRIP_START && exp.date <= TRIP_END;
-    }
-    if (expenseDateFilter === 'Today') {
-      const today = new Date().toISOString().split('T')[0];
-      matchDate = exp.date === today;
+    if (expenseDateFilter !== 'All') {
+      matchDate = exp.date === expenseDateFilter;
     }
 
     return matchCategory && matchDate;
@@ -1097,13 +1499,17 @@ export default function App() {
 
   const summaryExpenses = expenses.filter((exp) => {
     if (summaryPerson === 'All') return true;
-    return exp.payer === summaryPerson || exp.participants.includes(summaryPerson);
+    return exp.participants.includes(summaryPerson);
   });
 
   const categoryTotalsHKD = summaryExpenses.reduce((acc, exp) => {
     const tags = exp.categoryTags || [exp.category];
     const primary = tags[0] || 'Others';
-    const amountHKD = toHKD(exp.amount, exp.currency || 'KRW');
+    const totalAmountHKD = toHKD(exp.amount, exp.currency || 'KRW');
+    // If a specific person is selected, count only their share
+    const amountHKD = summaryPerson === 'All'
+      ? totalAmountHKD
+      : totalAmountHKD / exp.participants.length;
     acc[primary] = (acc[primary] || 0) + amountHKD;
     return acc;
   }, {});
@@ -1126,7 +1532,8 @@ export default function App() {
     localStorage.setItem('korea_packing', JSON.stringify(packingList));
     localStorage.setItem('korea_expenses', JSON.stringify(expenses));
     localStorage.setItem('korea_itinerary_editing', String(isEditingItinerary));
-  }, [itinerary, packingList, expenses, isEditingItinerary]);
+    localStorage.setItem('korea_krw_rate', krwRate.toString());
+  }, [itinerary, packingList, expenses, isEditingItinerary, krwRate]);
 
   // itinerary handlers
   const handleItineraryFieldChange = (dayId, itemId, field, value) => {
@@ -1247,12 +1654,27 @@ export default function App() {
   // expense handlers
   const addExpense = (e) => {
     e.preventDefault();
-    if (
-      !newExpense.desc ||
-      !newExpense.amount ||
-      newExpense.participants.length === 0
-    )
-      return;
+    console.log('Add expense clicked:', newExpense); // Debug log
+    // Validate description
+    if (!newExpense.desc?.trim()) {
+      console.warn('Description is required');
+      return false;
+    }
+    // Validate amount
+    if (!newExpense.amount) {
+      console.warn('Amount is required');
+      return false;
+    }
+    const amountNum = parseFloat(newExpense.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      console.warn('Invalid amount:', newExpense.amount);
+      return false;
+    }
+    // Validate participants
+    if (newExpense.participants.length === 0) {
+      console.warn('At least one participant is required');
+      return false;
+    }
 
     const expense = {
       id: Date.now(),
@@ -1272,22 +1694,61 @@ export default function App() {
       payer: newExpense.payer,
       participants: [...FRIENDS],
     });
+    return true;
   };
 
   const removeExpense = (id) => {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id));
   };
-  
-  const toHKD = (amount, currency) => {
-    if (!amount) return 0;
-    const rate = FX_RATES[currency] || 1;
-    return amount * rate;
+
+  // Expense editing handlers
+  const startEditExpense = (expense) => {
+    setEditingExpenseId(expense.id);
+    setEditFormData({
+      desc: expense.desc,
+      amount: expense.amount.toString(),
+      currency: expense.currency,
+      category: expense.category,
+      categoryTags: expense.categoryTags || [expense.category],
+      payer: expense.payer,
+      participants: [...expense.participants],
+      date: expense.date,
+    });
   };
 
-  const toKRW = (amount, currency) => {
-    const hkd = toHKD(amount, currency);
-    const krwPerHKD = 1 / FX_RATES['KRW'];
-    return hkd * krwPerHKD;
+  const updateExpense = (e) => {
+    e.preventDefault();
+    if (
+      !editFormData.desc?.trim() ||
+      !editFormData.amount ||
+      editFormData.participants.length === 0
+    ) {
+      return;
+    }
+
+    setExpenses((prev) =>
+      prev.map((exp) =>
+        exp.id === editingExpenseId
+          ? {
+              ...exp,
+              desc: editFormData.desc,
+              amount: parseFloat(editFormData.amount),
+              currency: editFormData.currency,
+              category: editFormData.category,
+              categoryTags: editFormData.categoryTags,
+              participants: editFormData.participants,
+              date: editFormData.date,
+            }
+          : exp
+      )
+    );
+    setEditingExpenseId(null);
+    setEditFormData(INITIAL_EXPENSE);
+  };
+
+  const cancelEdit = () => {
+    setEditingExpenseId(null);
+    setEditFormData(INITIAL_EXPENSE);
   };
 
   const toggleParticipant = (friend) => {
@@ -1408,6 +1869,12 @@ export default function App() {
           onToggleParticipant={toggleParticipant}
           onAddExpense={addExpense}
           onRemoveExpense={removeExpense}
+          onStartEditExpense={startEditExpense}
+          editingExpenseId={editingExpenseId}
+          editFormData={editFormData}
+          onChangeEditFormData={setEditFormData}
+          onCancelEdit={cancelEdit}
+          onUpdateExpense={updateExpense}
           categoryFilter={expenseCategoryFilter}
           onChangeCategoryFilter={setExpenseCategoryFilter}
           dateFilter={expenseDateFilter}
@@ -1415,6 +1882,10 @@ export default function App() {
           categoryTotalsHKD={categoryTotalsHKD}
           summaryPerson={summaryPerson}
           onChangeSummaryPerson={setSummaryPerson}
+          toHKD={toHKD}
+          toKRW={toKRW}
+          krwRate={krwRate}
+          setKrwRate={setKrwRate}
         />
       )}
 

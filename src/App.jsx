@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, Component } from 'react';
 import {
   MapPin,
   ListChecks,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ArrowRight,
   X,
+  AlertCircle,
 } from 'lucide-react';
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
@@ -645,41 +646,95 @@ function PackingTab({
 }
 
 // Expenses components
-function SettlementsSummary({ settlements, toHKD }) {
+function SettlementsSummary({ settlements, netBalances, toHKD }) {
+  // Sort friends by absolute balance (descending) for visual hierarchy
+  const sortedFriends = [...FRIENDS].sort((a, b) => Math.abs(netBalances[b] || 0) - Math.abs(netBalances[a] || 0));
+
+  const formatHKD = (amount) => `$${Math.round(amount).toLocaleString()} HKD`;
+
   return (
-    <>
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
+      {/* Net Balances */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {sortedFriends.map((friend) => {
+          const balance = netBalances[friend] || 0;
+          const isPositive = balance > 0.01;
+          const absBalance = Math.abs(balance);
+
+          return (
+            <div
+              key={friend}
+              className={`p-2.5 rounded-lg border ${
+                isPositive
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : balance < -0.01
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-0.5">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase">
+                  {friend}
+                </span>
+                {isPositive ? (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                ) : balance < -0.01 ? (
+                  <AlertCircle className="w-3 h-3 text-red-600" />
+                ) : (
+                  <span className="text-slate-400 text-xs">−</span>
+                )}
+              </div>
+              <div
+                className={`text-base font-bold font-mono ${
+                  isPositive ? 'text-emerald-700' : balance < -0.01 ? 'text-red-700' : 'text-slate-600'
+                }`}
+              >
+                {isPositive ? '+' : ''}
+                {formatHKD(absBalance)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Settlement Plan */}
       {settlements.length === 0 ? (
-        <div className="flex items-center justify-center py-8 text-indigo-700">
-          <CheckCircle2 className="w-6 h-6 mr-2" />
-          <span className="font-medium">Everyone is settled up!</span>
+        <div className="flex items-center justify-center py-3 text-slate-500">
+          <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-500" />
+          <span className="text-sm">All settled up!</span>
         </div>
       ) : (
-        <ul className="space-y-2.5">
-          {settlements.map((s, idx) => {
-            const hkd = toHKD(s.amount, 'KRW');
-            return (
-              <li
-                key={idx}
-                className="flex items-center justify-between bg-white p-3.5 rounded-xl shadow-sm border border-indigo-50"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-700 text-sm">{s.from}</span>
-                  <ArrowRight className="w-4 h-4 text-indigo-400" />
-                  <span className="font-mono font-bold text-sm text-slate-700">
-                    {s.amount.toLocaleString()} ₩
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    (~{Math.round(hkd).toLocaleString()} HKD)
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-indigo-400" />
-                  <span className="font-semibold text-slate-700 text-sm">{s.to}</span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="space-y-1.5">
+          <h4 className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+            Settlements
+          </h4>
+          <ul className="space-y-1">
+            {settlements.map((s, idx) => {
+              const hkd = toHKD(s.amount, 'KRW');
+              return (
+                <li
+                  key={idx}
+                  className="flex items-center justify-between py-1.5 px-2 bg-slate-50 rounded-md border border-slate-100"
+                >
+                  <div className="flex items-center gap-1.5 flex-1">
+                    <span className="text-xs font-medium text-slate-600">{s.from}</span>
+                    <span className="text-xs text-slate-400">→</span>
+                    <span className="text-xs font-medium text-slate-700">{s.to}</span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-mono text-slate-600">
+                      {(s.amount).toLocaleString()} KRW
+                      <span className="text-slate-400 mx-1">/</span>
+                      <span className="font-bold text-slate-700">{formatHKD(hkd)}</span>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -950,10 +1005,33 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
 
 
 
+class ErrorBoundary extends Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+          <h3 className="font-bold text-red-800 mb-2">Error</h3>
+          <pre className="text-xs text-red-700 whitespace-pre-wrap">
+            {this.state.error?.toString()}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function ExpensesTab({
   expenses,
   groupedByDate,
   settlements,
+  netBalances,
   newExpense,
   onChangeNewExpense,
   onToggleParticipant,
@@ -1102,7 +1180,11 @@ function ExpensesTab({
                   <span className="text-xs text-slate-600">HKD</span>
                 </div>
               </div>
-              <SettlementsSummary settlements={settlements} toHKD={toHKD} />
+              <SettlementsSummary
+                settlements={settlements}
+                netBalances={netBalances}
+                toHKD={toHKD}
+              />
             </div>
           </div>
 
@@ -1333,9 +1415,9 @@ function PieChart({ data }) {
   const innerRadius = 25;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-6">
-      <div className="relative">
-        <svg viewBox="0 0 100 100" className="w-48 h-48 transform -rotate-90">
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 h-full">
+      <div className="relative flex items-center justify-center flex-shrink-0">
+        <svg viewBox="0 0 100 100" className="w-52 h-52 transform -rotate-90">
           {entries.map(([key, value], idx) => {
             const percentage = (value / total) * 100;
             const startAngle = (cumulative / total) * 2 * Math.PI;
@@ -1396,27 +1478,25 @@ function PieChart({ data }) {
         </svg>
       </div>
 
-      <div className="flex-1 space-y-2.5 min-w-0">
+      <div className="flex-1 space-y-2.5 min-w-0 pr-6">
         {entries.map(([key, value]) => {
           const percentage = (value / total) * 100;
           const colors = categoryColorMap[key] || categoryColorMap['Misc'];
           return (
-            <div key={key} className="flex items-center gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span
-                  className="w-3 h-3 rounded-sm flex-shrink-0 border"
-                  style={{ backgroundColor: colors.fill, borderColor: colors.stroke }}
-                />
-                <span className="text-xs font-medium text-slate-700 truncate">
-                  {key}
-                </span>
-              </div>
+            <div key={key} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1">
+              <span
+                className="w-3 h-3 rounded-sm flex-shrink-0 border"
+                style={{ backgroundColor: colors.fill, borderColor: colors.stroke }}
+              />
+              <span className="text-xs font-medium text-slate-700 truncate min-w-[100px]">
+                {key}
+              </span>
               <div className="flex items-center gap-2 text-xs tabular-nums">
-                <span className="text-slate-500 font-mono w-16 text-right">
+                <span className="text-slate-500 font-mono">
                   ${Math.round(value).toLocaleString()}
                 </span>
                 <span
-                  className="w-8 text-right font-bold"
+                  className="font-bold"
                   style={{ color: colors.text }}
                 >
                   {percentage.toFixed(1)}%
@@ -1468,7 +1548,7 @@ export default function App() {
 
   const toKRW = (amount, currency) => {
     const hkd = toHKD(amount, currency);
-    return hkd / krwRate; // Convert HKD back to KRW
+    return krwRate > 0 ? hkd / krwRate : 0; // Convert HKD back to KRW, avoid division by zero
   };
 
 
@@ -1476,8 +1556,8 @@ export default function App() {
   const TRIP_END = '2026-04-10';
 
   const filteredExpenses = expenses.filter((exp) => {
-    const tags = exp.categoryTags || [exp.category];
-
+    if (!exp) return false;
+    const tags = exp.categoryTags || (exp.category ? [exp.category] : []);
     const matchCategory =
       expenseCategoryFilter === 'All' ||
       tags.includes(expenseCategoryFilter);
@@ -1736,6 +1816,7 @@ export default function App() {
               currency: editFormData.currency,
               category: editFormData.category,
               categoryTags: editFormData.categoryTags,
+              payer: editFormData.payer,
               participants: editFormData.participants,
               date: editFormData.date,
             }
@@ -1760,18 +1841,27 @@ export default function App() {
     }));
   };
 
-  const calculateSettlements = () => {
+  const calculateNetBalances = () => {
     const balances = {};
     FRIENDS.forEach((f) => (balances[f] = 0));
 
     expenses.forEach((exp) => {
       const totalHKD = toHKD(exp.amount, exp.currency || 'KRW');
-      const splitHKD = totalHKD / exp.participants.length;
-      balances[exp.payer] += totalHKD;
-      exp.participants.forEach((p) => {
+      // Ensure participants exists and has at least 1 person (the payer at minimum)
+      const participants = (exp.participants && exp.participants.length > 0) ? exp.participants : [exp.payer];
+      const splitHKD = totalHKD / participants.length;
+      const payer = exp.payer || FRIENDS[0]; // fallback to first friend if undefined
+      balances[payer] += totalHKD;
+      participants.forEach((p) => {
         balances[p] -= splitHKD;
       });
     });
+
+    return balances;
+  };
+
+  const calculateSettlements = () => {
+    const balances = calculateNetBalances();
 
     const debtors = [];
     const creditors = [];
@@ -1807,7 +1897,8 @@ export default function App() {
     return settlements;
   };
 
-  const settlements = calculateSettlements();
+  const netBalances = useMemo(() => calculateNetBalances(), [expenses, toHKD]);
+  const settlements = useMemo(() => calculateSettlements(), [expenses, toHKD]);
 
     // Category handlers
   const addCategory = () => {
@@ -1860,33 +1951,36 @@ export default function App() {
         )}
 
       {activeTab === 'expenses' && (
-        <ExpensesTab
-          expenses={expenses}
-          groupedByDate={groupedByDate}
-          settlements={settlements}
-          newExpense={newExpense}
-          onChangeNewExpense={setNewExpense}
-          onToggleParticipant={toggleParticipant}
-          onAddExpense={addExpense}
-          onRemoveExpense={removeExpense}
-          onStartEditExpense={startEditExpense}
-          editingExpenseId={editingExpenseId}
-          editFormData={editFormData}
-          onChangeEditFormData={setEditFormData}
-          onCancelEdit={cancelEdit}
-          onUpdateExpense={updateExpense}
-          categoryFilter={expenseCategoryFilter}
-          onChangeCategoryFilter={setExpenseCategoryFilter}
-          dateFilter={expenseDateFilter}
-          onChangeDateFilter={setExpenseDateFilter}
-          categoryTotalsHKD={categoryTotalsHKD}
-          summaryPerson={summaryPerson}
-          onChangeSummaryPerson={setSummaryPerson}
-          toHKD={toHKD}
-          toKRW={toKRW}
-          krwRate={krwRate}
-          setKrwRate={setKrwRate}
-        />
+        <ErrorBoundary>
+          <ExpensesTab
+            expenses={expenses}
+            groupedByDate={groupedByDate}
+            settlements={settlements}
+            netBalances={netBalances}
+            newExpense={newExpense}
+            onChangeNewExpense={setNewExpense}
+            onToggleParticipant={toggleParticipant}
+            onAddExpense={addExpense}
+            onRemoveExpense={removeExpense}
+            onStartEditExpense={startEditExpense}
+            editingExpenseId={editingExpenseId}
+            editFormData={editFormData}
+            onChangeEditFormData={setEditFormData}
+            onCancelEdit={cancelEdit}
+            onUpdateExpense={updateExpense}
+            categoryFilter={expenseCategoryFilter}
+            onChangeCategoryFilter={setExpenseCategoryFilter}
+            dateFilter={expenseDateFilter}
+            onChangeDateFilter={setExpenseDateFilter}
+            categoryTotalsHKD={categoryTotalsHKD}
+            summaryPerson={summaryPerson}
+            onChangeSummaryPerson={setSummaryPerson}
+            toHKD={toHKD}
+            toKRW={toKRW}
+            krwRate={krwRate}
+            setKrwRate={setKrwRate}
+          />
+        </ErrorBoundary>
       )}
 
       </main>

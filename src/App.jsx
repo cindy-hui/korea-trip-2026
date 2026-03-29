@@ -994,6 +994,29 @@ function ExpenseForm({
         />
       </div>
 
+      <div>
+        <label className="text-xs font-medium text-slate-700 mb-2">Category</label>
+        <div className="flex flex-wrap gap-1.5 py-1">
+          {PRESET_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() =>
+                onChangeFormData(prev => ({ ...prev, category: cat, categoryTags: [cat] }))
+              }
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
+                data.category === cat
+                  ? `${categoryColors[cat].bg} ${categoryColors[cat].text} ${categoryColors[cat].border}`
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              <span>{categoryEmojis[cat]}</span>
+              <span>{cat}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex space-x-4 mb-2">
         <div className="flex-1">
           <label className="text-xs font-medium text-slate-700">Amount</label>
@@ -1057,49 +1080,34 @@ function ExpenseForm({
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-slate-700 mb-2">Category</label>
-        <div className="flex flex-wrap gap-1.5 py-1">
-          {PRESET_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() =>
-                onChangeFormData(prev => ({ ...prev, category: cat, categoryTags: [cat] }))
-              }
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
-                data.category === cat
-                  ? `${categoryColors[cat].bg} ${categoryColors[cat].text} ${categoryColors[cat].border}`
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
-              }`}
-            >
-              <span>{categoryEmojis[cat]}</span>
-              <span>{cat}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="mb-0.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-medium text-slate-700">Split Among</label>
         </div>
+        <p className="text-[11px] text-gray-500 mb-1.5">
+          Equal split by default. Input below for specific amounts.
+        </p>
         <div className="flex flex-wrap gap-1.5 py-1">
           {friends.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => handleToggleParticipant(f)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border ${
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
                 data.participants.includes(f)
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-gray-700 border-gray-300'
+                  ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
               }`}
             >
               {f}
             </button>
           ))}
         </div>
+        {data.splitType !== 'custom' && (
+          <p className="text-[11px] text-gray-500 mt-1">
+             👉 Split {data.participants.length} ways: {getEqualSplitAmount().toLocaleString()} {data.currency} each
+          </p>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -1109,21 +1117,23 @@ function ExpenseForm({
               splits: prev.splitType === 'equal' ? initializeCustomSplits(prev) : undefined
             }));
           }}
-          className={`mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded-md border transition-colors ${
+          className={`mt-2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
             data.splitType === 'custom'
-              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              ? 'bg-teal-50 text-teal-700'
+              : 'bg-gray-50 text-gray-700  hover:bg-gray-100'
           }`}
         >
           {data.splitType === 'custom' && (
-            <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           )}
-          <span>Input Custom Split Amount</span>
-          <svg className={`w-3 h-3 transition-transform ${data.splitType === 'custom' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <span>Input Specific Amounts</span>
+          {data.splitType !== 'custom' && (
+            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
         </button>
         {/* Custom split configuration */}
         {data.splitType === 'custom' && (
@@ -1143,7 +1153,7 @@ function ExpenseForm({
                       <div key={friend} className="flex items-center gap-2">
                         <span className="text-xs text-slate-600 w-16 flex-shrink-0">{friend}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                          <div className="flex items-center bg-slate-50 rounded-lg overflow-hidden">
                             <span className="pl-2 pr-1 text-xs text-slate-400 select-none">$</span>
                             <input
                               type="number"
@@ -1176,14 +1186,11 @@ function ExpenseForm({
                       </div>
                     );
                   })}
-                  <div className={`text-xs flex items-center justify-between ${
+                  <div className={`text-xs flex justify-end ${
                     Math.abs(splitTotal - totalAmount) < 0.01
                       ? 'text-green-600'
                       : 'text-red-600'
                   }`}>
-                    <span>
-                      Total: {totalAmount.toLocaleString()} {data.currency}
-                    </span>
                     <span>
                       Remaining to split: {(totalAmount - splitTotal).toLocaleString()} {data.currency}
                     </span>

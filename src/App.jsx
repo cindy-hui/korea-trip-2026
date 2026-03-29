@@ -285,6 +285,8 @@ const INITIAL_EXPENSE = {
   categoryTags: ['Food'],
   currency: 'KRW',
   date: new Date().toISOString().split('T')[0],
+  splitType: 'equal', // 'equal' or 'custom'
+  splits: {}, // { [friend]: amount } (optional, used when splitType is 'custom')
 };
 
 // Itinerary components
@@ -916,9 +918,70 @@ function ExpenseForm({
 
   const data = formData;
 
+  // Helper to calculate equal split amount
+  const getEqualSplitAmount = () => {
+    const amount = parseFloat(data.amount) || 0;
+    const count = data.participants.length;
+    return count > 0 ? amount / count : 0;
+  };
+
+  // Check if custom splits sum matches total amount
+  const getSplitTotalMatch = () => {
+    const splitSum = Object.values(data.splits || {}).reduce((sum, val) => sum + (val || 0), 0);
+    const total = parseFloat(data.amount) || 0;
+    return Math.abs(splitSum - total) < 0.01;
+  };
+
+  // Initialize custom splits from current participants
+  const initializeCustomSplits = (formData) => {
+    const equalAmount = getEqualSplitAmount();
+    const splits = {};
+    formData.participants.forEach((p) => {
+      splits[p] = equalAmount;
+    });
+    return splits;
+  };
+
+  // Handle split type change
+  const handleSplitTypeChange = (type) => {
+    if (type === 'custom') {
+      onChangeFormData({
+        ...data,
+        splitType: 'custom',
+        splits: initializeCustomSplits(data)
+      });
+    } else {
+      onChangeFormData({
+        ...data,
+        splitType: 'equal'
+      });
+    }
+  };
+
+  // Handle participant toggle - need to update splits if in custom mode
+  const handleToggleParticipant = (friend) => {
+    const newParticipants = data.participants.includes(friend)
+      ? data.participants.filter((p) => p !== friend)
+      : [...data.participants, friend];
+
+    if (data.splitType === 'custom') {
+      // Re-initialize splits with equal distribution for the new participant set
+      const newFormData = { ...data, participants: newParticipants };
+      onChangeFormData({
+        ...newFormData,
+        splits: initializeCustomSplits(newFormData)
+      });
+    } else {
+      onChangeFormData({
+        ...data,
+        participants: newParticipants
+      });
+    }
+  };
+
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-2.5">
-      <div>
+      <div className="py-0 mb-2">
         <label className="text-xs font-medium text-slate-700">What was it for?</label>
         <input
           type="text"
@@ -926,12 +989,12 @@ function ExpenseForm({
           onChange={(e) =>
             onChangeFormData(prev => ({ ...prev, desc: e.target.value }))
           }
-          className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+          className="w-full p-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mt-1"
           required
         />
       </div>
 
-      <div className="flex space-x-2">
+      <div className="flex space-x-4 mb-2">
         <div className="flex-1">
           <label className="text-xs font-medium text-slate-700">Amount</label>
           <input
@@ -941,19 +1004,19 @@ function ExpenseForm({
             onChange={(e) =>
               onChangeFormData(prev => ({ ...prev, amount: e.target.value }))
             }
-            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono  mt-1"
             required
           />
         </div>
 
         <div>
-          <label className="text-xs font-medium text-slate-700">Currency</label>
+          <label className="text-xs font-medium text-slate-700 mb-2">Currency</label>
           <select
             value={data.currency}
             onChange={(e) =>
               onChangeFormData(prev => ({ ...prev, currency: e.target.value }))
             }
-            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mt-1"
           >
             <option value="KRW">KRW</option>
             <option value="HKD">HKD</option>
@@ -962,15 +1025,15 @@ function ExpenseForm({
         </div>
       </div>
 
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 py-1 mb-2">
         <div className="flex-1">
-          <label className="text-xs font-medium text-slate-700">Paid by</label>
+          <label className="text-xs font-medium text-slate-700 mb-2">Paid by</label>
           <select
             value={data.payer}
             onChange={(e) =>
               onChangeFormData(prev => ({ ...prev, payer: e.target.value }))
             }
-            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mt-1"
           >
             {friends.map((f) => (
               <option key={f} value={f}>
@@ -981,22 +1044,22 @@ function ExpenseForm({
         </div>
 
         <div className="flex-1">
-          <label className="text-xs font-medium text-slate-700">Date</label>
+          <label className="text-xs font-medium text-slate-700 mb-2">Date</label>
           <input
             type="date"
             value={data.date}
             onChange={(e) =>
               onChangeFormData(prev => ({ ...prev, date: e.target.value }))
             }
-            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg"
+            className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mt-1"
             required
           />
         </div>
       </div>
 
       <div>
-        <label className="text-xs font-medium text-slate-700">Category</label>
-        <div className="flex flex-wrap gap-1.5">
+        <label className="text-xs font-medium text-slate-700 mb-2">Category</label>
+        <div className="flex flex-wrap gap-1.5 py-1">
           {PRESET_CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -1017,14 +1080,16 @@ function ExpenseForm({
         </div>
       </div>
 
-      <div className="mb-3">
-        <label className="text-xs font-medium text-slate-700">Split among</label>
-        <div className="flex flex-wrap gap-1.5">
+      <div className="mb-0.5">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-slate-700">Split Among</label>
+        </div>
+        <div className="flex flex-wrap gap-1.5 py-1">
           {friends.map((f) => (
             <button
               key={f}
               type="button"
-              onClick={() => onToggleParticipant(f)}
+              onClick={() => handleToggleParticipant(f)}
               className={`px-2.5 py-1 text-[11px] font-medium rounded-full border ${
                 data.participants.includes(f)
                   ? 'bg-black text-white border-black'
@@ -1035,6 +1100,99 @@ function ExpenseForm({
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            onChangeFormData(prev => ({
+              ...prev,
+              splitType: prev.splitType === 'equal' ? 'custom' : 'equal',
+              splits: prev.splitType === 'equal' ? initializeCustomSplits(prev) : undefined
+            }));
+          }}
+          className={`mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded-md border transition-colors ${
+            data.splitType === 'custom'
+              ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {data.splitType === 'custom' && (
+            <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          )}
+          <span>Input Custom Split Amount</span>
+          <svg className={`w-3 h-3 transition-transform ${data.splitType === 'custom' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {/* Custom split configuration */}
+        {data.splitType === 'custom' && (
+          <div className="mt-2 border border-slate-200 space-y-3 rounded-lg py-2 px-2.5">
+            {/* Custom split amounts */}
+            {(() => {
+              const totalAmount = parseFloat(data.amount) || 0;
+              const splitTotal = Object.values(data.splits || {}).reduce((sum, val) => sum + (val || 0), 0);
+
+              return (
+                <div className="space-y-1.5">
+                  {data.participants.map((friend) => {
+                    const amount = data.splits?.[friend] || '';
+                    const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) : '0';
+
+                    return (
+                      <div key={friend} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-600 w-16 flex-shrink-0">{friend}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                            <span className="pl-2 pr-1 text-xs text-slate-400 select-none">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={amount}
+                              onChange={(e) => {
+                                let value = e.target.value;
+                                // Only allow numbers with max 2 decimal places
+                                if (value && !/^\d*\.?\d{0,2}$/.test(value)) {
+                                  return;
+                                }
+                                const newAmount = value === '' ? 0 : parseFloat(value);
+                                onChangeFormData(prev => ({
+                                  ...prev,
+                                  splits: {
+                                    ...prev.splits,
+                                    [friend]: newAmount
+                                  }
+                                }));
+                              }}
+                              className="flex-1 px-1 py-1 text-sm font-mono bg-transparent border-none focus:ring-0 focus:outline-none min-w-0"
+                              placeholder="0"
+                            />
+                            <span className="px-1 text-xs text-slate-300 select-none">/</span>
+                            <span className="pr-2 pl-1 text-xs text-slate-500 font-mono whitespace-nowrap">
+                              {(totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) : '0.0')}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className={`text-xs flex items-center justify-between ${
+                    Math.abs(splitTotal - totalAmount) < 0.01
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}>
+                    <span>
+                      Total: {totalAmount.toLocaleString()} {data.currency}
+                    </span>
+                    <span>
+                      Remaining to split: {(totalAmount - splitTotal).toLocaleString()} {data.currency}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
     </form>
   );
@@ -1076,8 +1234,12 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
               {date}
             </p>
             {groupedByDate[date].map((exp) => {
-              const hkd = toHKD(exp.amount, exp.currency || 'KRW');
-              const krw = toKRW(exp.amount, exp.currency || 'KRW');
+              const currency = exp.currency || 'KRW';
+              const hkd = toHKD(exp.amount, currency);
+              const krw = toKRW(exp.amount, currency);
+              // Show conversion to the other currency
+              const conversionValue = currency === 'HKD' ? Math.round(krw) : Math.round(hkd);
+              const conversionLabel = currency === 'HKD' ? 'KRW' : 'HKD';
               return (
                 <div
                   key={exp.id}
@@ -1119,20 +1281,20 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
 
                     {/* Row 2: Paid by and split info */}
                     <div className="text-[10px] text-slate-400">
-                      Paid by {exp.payer} • Split {exp.participants.length} ways
+                      Paid by {exp.payer} • {exp.splitType === 'custom' ? 'Custom split' : `Split ${exp.participants.length} ways`}
                     </div>
 
                     {/* Row 3: Amount */}
                     <div className="flex justify-end items-center gap-2">
                       <div className="text-[10px] text-slate-400 font-mono">
-                        ≈ {Math.round(hkd).toLocaleString()} HKD
+                        ≈ {conversionValue.toLocaleString()} {conversionLabel}
                       </div>
                       <div className="text-right">
                         <span className="font-mono font-bold text-sm text-slate-800">
                           {exp.amount.toLocaleString()}
                         </span>
                         <span className="text-xs text-slate-600 ml-0.5 font-mono">
-                          {exp.currency || 'KRW'}
+                          {currency}
                         </span>
                       </div>
                     </div>
@@ -1274,6 +1436,19 @@ function ExpensesTab({
     if (editingExpenseId) {
       onCancelEdit(); // cancel any ongoing edit
     }
+    // Reset form data to initial state when opening add sheet
+    onChangeNewExpense({
+      desc: '',
+      amount: '',
+      payer: FRIENDS[0],
+      participants: [...FRIENDS],
+      category: 'Food',
+      categoryTags: ['Food'],
+      currency: 'KRW',
+      date: new Date().toISOString().split('T')[0],
+      splitType: 'equal', // 'equal' or 'custom'
+      splits: {}, // { [friend]: amount } (optional, used when splitType is 'custom')
+    });
     setSheetMode('add');
   };
 
@@ -1306,12 +1481,13 @@ function ExpensesTab({
           <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
             <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
               <div className="mb-3">
-                <h3 className="font-bold text-indigo-800 text-base">💰 Who owes whom?</h3>
-                <p className="text-xs text-indigo-600 mt-0.5">
-                  Settlements between friends
-                </p>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-bold text-slate-800 text-base">💰 Who owes whom?</h3>
+                </div>
+                <p className="text-xs text-indigo-500">Settlements between friends</p>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-slate-600">Conversion: 1 KRW =</span>
+                  <div className="w-1 h-5 bg-slate-300 rounded-full"></div>
+                  <span className="text-xs text-slate-500">Conversion: 1 KRW =</span>
                   <input
                     type="number"
                     step="0.0001"
@@ -1335,20 +1511,23 @@ function ExpensesTab({
           {/* Card 2: Expense Summary - matching style */}
           <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
             <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-slate-800 text-base">📊 Expense Summary</h3>
-                <select
-                  value={summaryPerson}
-                  onChange={(e) => onChangeSummaryPerson(e.target.value)}
-                  className="px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
-                >
-                  <option value="All">All friends</option>
-                  {FRIENDS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                </select>
+              <div className="mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-bold text-slate-800 text-base">📊 Expense Summary</h3>
+                  <select
+                    value={summaryPerson}
+                    onChange={(e) => onChangeSummaryPerson(e.target.value)}
+                    className="px-3 py-1.5 text-xs bg-white border border-indigo-200 rounded-lg"
+                  >
+                    <option value="All">All friends</option>
+                    {FRIENDS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="text-xs text-indigo-500">Filtered by your participation in expenses</p>
               </div>
               <PieChart data={categoryTotalsHKD} />
             </div>
@@ -1485,8 +1664,8 @@ function ExpensesTab({
               </button>
             </div>
             {/* Form content with scroll */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
-              <div className="border border-indigo-200 rounded-xl p-3">
+            <div className="flex-1 overflow-y-auto px-4 pt-0 pb-3">
+              <div className="border border-indigo-200 rounded-xl py-2 p-3">
                 <ExpenseForm
                   friends={FRIENDS}
                   formRef={formRef}
@@ -1655,6 +1834,54 @@ function PieChart({ data }) {
 }
 
 
+// Confirm Dialog Component
+function ConfirmDialog({ isOpen, itemName, onConfirm, onCancel }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/20 backdrop-blur-[2px] transition-opacity"
+        onClick={onCancel}
+      ></div>
+      {/* Modal Content */}
+      <div className="relative w-full max-w-md bg-white/95 backdrop-blur border border-slate-200 rounded-2xl shadow-xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+        {/* Content */}
+        <div className="pt-5 pb-4 px-4">
+          <div className="flex flex-col items-center text-center mb-2.5 mt-2 gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-sm font-normal text-slate-700">
+              Delete{' '}
+              <span className="font-semibold text-slate-800">"{itemName}"</span>?
+            </p>
+          </div>
+          <p className="text-xs text-slate-400 text-center mb-3.5">
+            This action can't be undone
+          </p>
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex-1 py-1.5 px-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Main App
 export default function App() {
   const [activeTab, setActiveTab] = useState('itinerary');
@@ -1682,6 +1909,13 @@ export default function App() {
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editFormData, setEditFormData] = useState(INITIAL_EXPENSE);
 
+  // Confirmation dialog state
+  const [confirmState, setConfirmState] = useState({
+    isOpen: false,
+    itemName: '',
+    onConfirm: null,
+  });
+
   const toHKD = (amount, currency) => {
     if (!amount) return 0;
     if (currency === 'KRW') return amount * krwRate;
@@ -1694,6 +1928,21 @@ export default function App() {
     return krwRate > 0 ? hkd / krwRate : 0; // Convert HKD back to KRW, avoid division by zero
   };
 
+  // Confirmation dialog handlers
+  const showConfirm = (itemName, onConfirm) => {
+    setConfirmState({
+      isOpen: true,
+      itemName,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmState({ isOpen: false, itemName: '', onConfirm: null });
+      },
+    });
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmState({ isOpen: false, itemName: '', onConfirm: null });
+  };
 
   const TRIP_START = '2026-04-06';
   const TRIP_END = '2026-04-10';
@@ -1732,7 +1981,15 @@ export default function App() {
     // If a specific person is selected, count only their share
     const amountHKD = summaryPerson === 'All'
       ? totalAmountHKD
-      : totalAmountHKD / exp.participants.length;
+      : (() => {
+          // Custom split: use the person's specific share amount
+          if (exp.splitType === 'custom' && exp.splits && exp.splits[summaryPerson] !== undefined) {
+            const share = exp.splits[summaryPerson];
+            return toHKD(share, exp.currency || 'KRW');
+          }
+          // Equal split or person not in custom splits: use equal division
+          return totalAmountHKD / exp.participants.length;
+        })();
     acc[primary] = (acc[primary] || 0) + amountHKD;
     return acc;
   }, {});
@@ -1798,6 +2055,17 @@ export default function App() {
           : day,
       ),
     );
+  };
+
+  // Confirmation wrapper for itinerary item deletion
+  const confirmRemoveItineraryItem = (dayId, itemId) => {
+    const day = itinerary.find((d) => d.id === dayId);
+    const item = day?.items.find((i) => i.id === itemId);
+    if (item) {
+      showConfirm(item.text || 'this itinerary item', () => {
+        removeItineraryItem(dayId, itemId);
+      });
+    }
   };
 
   const reorderItineraryItems = (dayId, fromIndex, toIndex) => {
@@ -1875,6 +2143,17 @@ export default function App() {
     }));
   };
 
+  // Confirmation wrapper for packing item deletion
+  const confirmRemovePackingItem = (category, id) => {
+    const categoryItems = packingList[category];
+    const item = categoryItems?.find((i) => i.id === id);
+    if (item) {
+      showConfirm(item.name || 'this packing item', () => {
+        removePackingItem(category, id);
+      });
+    }
+  };
+
     const addPackingCategory = () => {
     const baseName = 'New section';
     let name = baseName;
@@ -1911,6 +2190,13 @@ export default function App() {
     });
   };
 
+  // Confirmation wrapper for packing category deletion
+  const confirmRemovePackingCategory = (name) => {
+    showConfirm(name || 'this category', () => {
+      removePackingCategory(name);
+    });
+  };
+
   // expense handlers
   const addExpense = (e) => {
     e.preventDefault();
@@ -1936,6 +2222,16 @@ export default function App() {
       return false;
     }
 
+    // Validate custom splits sum matches amount
+    if (newExpense.splitType === 'custom' && newExpense.splits) {
+      const totalSplits = Object.values(newExpense.splits).reduce((sum, val) => sum + (val || 0), 0);
+      const amount = parseFloat(newExpense.amount) || 0;
+      if (Math.abs(totalSplits - amount) > 0.01) {
+        alert('Custom splits must sum to the total amount');
+        return false;
+      }
+    }
+
     const expense = {
       id: Date.now(),
       desc: newExpense.desc,
@@ -1946,6 +2242,8 @@ export default function App() {
       categoryTags: newExpense.categoryTags || [newExpense.category],
       currency: newExpense.currency || 'KRW',
       date: newExpense.date,
+      splitType: newExpense.splitType || 'equal',
+      splits: newExpense.splits || {},
     };
 
     setExpenses((prev) => [expense, ...prev]);
@@ -1961,6 +2259,16 @@ export default function App() {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id));
   };
 
+  // Confirmation wrapper for expense deletion
+  const confirmRemoveExpense = (id) => {
+    const expense = expenses.find((exp) => exp.id === id);
+    if (expense) {
+      showConfirm(expense.desc || 'this expense', () => {
+        removeExpense(id);
+      });
+    }
+  };
+
   // Expense editing handlers
   const startEditExpense = (expense) => {
     setEditingExpenseId(expense.id);
@@ -1973,6 +2281,8 @@ export default function App() {
       payer: expense.payer,
       participants: [...expense.participants],
       date: expense.date,
+      splitType: expense.splitType || 'equal',
+      splits: expense.splits || {},
     });
   };
 
@@ -1984,6 +2294,16 @@ export default function App() {
       editFormData.participants.length === 0
     ) {
       return;
+    }
+
+    // Validate custom splits sum matches amount
+    if (editFormData.splitType === 'custom' && editFormData.splits) {
+      const totalSplits = Object.values(editFormData.splits).reduce((sum, val) => sum + (val || 0), 0);
+      const amount = parseFloat(editFormData.amount) || 0;
+      if (Math.abs(totalSplits - amount) > 0.01) {
+        alert('Custom splits must sum to the total amount');
+        return;
+      }
     }
 
     setExpenses((prev) =>
@@ -1999,6 +2319,8 @@ export default function App() {
               payer: editFormData.payer,
               participants: editFormData.participants,
               date: editFormData.date,
+              splitType: editFormData.splitType,
+              splits: editFormData.splits,
             }
           : exp
       )
@@ -2013,12 +2335,31 @@ export default function App() {
   };
 
   const toggleParticipant = (friend) => {
-    setNewExpense((prev) => ({
-      ...prev,
-      participants: prev.participants.includes(friend)
+    setNewExpense((prev) => {
+      const newParticipants = prev.participants.includes(friend)
         ? prev.participants.filter((p) => p !== friend)
-        : [...prev.participants, friend],
-    }));
+        : [...prev.participants, friend];
+
+      // If splitType is custom, reinitialize splits to equal distribution
+      if (prev.splitType === 'custom') {
+        const amount = parseFloat(prev.amount) || 0;
+        const equalAmount = amount / newParticipants.length;
+        const newSplits = {};
+        newParticipants.forEach((p) => {
+          newSplits[p] = equalAmount;
+        });
+        return {
+          ...prev,
+          participants: newParticipants,
+          splits: newSplits,
+        };
+      }
+
+      return {
+        ...prev,
+        participants: newParticipants,
+      };
+    });
   };
 
   const calculateNetBalances = () => {
@@ -2027,14 +2368,28 @@ export default function App() {
 
     expenses.forEach((exp) => {
       const totalHKD = toHKD(exp.amount, exp.currency || 'KRW');
-      // Ensure participants exists and has at least 1 person (the payer at minimum)
-      const participants = (exp.participants && exp.participants.length > 0) ? exp.participants : [exp.payer];
-      const splitHKD = totalHKD / participants.length;
-      const payer = exp.payer || FRIENDS[0]; // fallback to first friend if undefined
+      const payer = exp.payer || FRIENDS[0];
+
+      // Payer pays the full amount
       balances[payer] += totalHKD;
-      participants.forEach((p) => {
-        balances[p] -= splitHKD;
-      });
+
+      // Deduct each person's share (including payer's share)
+      if (exp.splitType === 'custom' && exp.splits) {
+        // Custom split: use the specific amounts defined in splits
+        Object.entries(exp.splits).forEach(([person, splitAmount]) => {
+          if (splitAmount > 0) {
+            const shareHKD = toHKD(splitAmount, exp.currency || 'KRW');
+            balances[person] -= shareHKD;
+          }
+        });
+      } else {
+        // Equal split: divide equally among participants
+        const participants = (exp.participants && exp.participants.length > 0) ? exp.participants : [exp.payer];
+        const shareHKD = totalHKD / participants.length;
+        participants.forEach((p) => {
+          balances[p] -= shareHKD;
+        });
+      }
     });
 
     return balances;
@@ -2111,7 +2466,7 @@ export default function App() {
             itinerary={itinerary}
             onFieldChange={handleItineraryFieldChange}
             onAddItem={addItineraryItem}
-            onRemoveItem={removeItineraryItem}
+            onRemoveItem={confirmRemoveItineraryItem}
             onReorderItems={reorderItineraryItems}
             onMoveItem={moveItineraryItem}
           />
@@ -2123,10 +2478,10 @@ export default function App() {
             onToggleItem={togglePackingItem}
             onChangeItemName={updatePackingItemName}
             onAddItem={addPackingItem}
-            onRemoveItem={removePackingItem}
+            onRemoveItem={confirmRemovePackingItem}
             onAddCategory={addPackingCategory}
             onRenameCategory={renamePackingCategory}
-            onRemoveCategory={removePackingCategory}
+            onRemoveCategory={confirmRemovePackingCategory}
           />
         )}
 
@@ -2141,7 +2496,7 @@ export default function App() {
             onChangeNewExpense={setNewExpense}
             onToggleParticipant={toggleParticipant}
             onAddExpense={addExpense}
-            onRemoveExpense={removeExpense}
+            onRemoveExpense={confirmRemoveExpense}
             onStartEditExpense={startEditExpense}
             editingExpenseId={editingExpenseId}
             editFormData={editFormData}
@@ -2165,7 +2520,7 @@ export default function App() {
 
       </main>
 
-      <nav className="bg-white border-t border-slate-100 fixed bottom-0 w-full pb-safe flex justify-around px-2 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] rounded-t-3xl">
+      <nav className="bg-white border-t border-slate-200 fixed bottom-0 w-full pb-safe flex justify-around px-3 py-2.5 shadow-sm rounded-t-2xl">
         <button
           onClick={() => setActiveTab('itinerary')}
           className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
@@ -2174,12 +2529,8 @@ export default function App() {
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <MapPin
-            className={`w-6 h-6 mb-1 ${
-              activeTab === 'itinerary' ? 'fill-indigo-50' : ''
-            }`}
-          />
-          <span className="text-[10px] font-bold tracking-wide">Itinerary</span>
+          <MapPin className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Itinerary</span>
         </button>
         <button
           onClick={() => setActiveTab('packing')}
@@ -2189,12 +2540,8 @@ export default function App() {
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <ListChecks
-            className={`w-6 h-6 mb-1 ${
-              activeTab === 'packing' ? 'fill-indigo-50' : ''
-            }`}
-          />
-          <span className="text-[10px] font-bold tracking-wide">Packing</span>
+          <ListChecks className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Packing</span>
         </button>
         <button
           onClick={() => setActiveTab('expenses')}
@@ -2204,16 +2551,18 @@ export default function App() {
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <Receipt
-            className={`w-6 h-6 mb-1 ${
-              activeTab === 'expenses' ? 'fill-indigo-50' : ''
-            }`}
-          />
-          <span className="text-[10px] font-bold tracking-wide">Expenses</span>
+          <Receipt className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Expenses</span>
         </button>
       </nav>
 
       <div className="h-20 bg-indigo-50/30" />
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        itemName={confirmState.itemName}
+        onConfirm={() => confirmState.onConfirm && confirmState.onConfirm()}
+        onCancel={handleCancelConfirm}
+      />
     </div>
   );
 }

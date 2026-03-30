@@ -16,6 +16,7 @@ import {
   GripVertical,
   ChevronDown,
 } from 'lucide-react';
+import { db, DEFAULT_ITINERARY, DEFAULT_PACKING_LIST, DEFAULT_KRW_RATE } from './db';
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
 
@@ -1959,10 +1960,7 @@ export default function App() {
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseDateFilter, setExpenseDateFilter] = useState('All');
   const [summaryPerson, setSummaryPerson] = useState('All');
-  const [krwRate, setKrwRate] = useState(() => {
-    const saved = localStorage.getItem('korea_krw_rate');
-    return saved ? parseFloat(saved) : 0.0052;
-  });
+  const [krwRate, setKrwRate] = useState(DEFAULT_KRW_RATE);
   // Category tags system
   const [categories, setCategories] = useState([
     'Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'
@@ -2062,21 +2060,24 @@ export default function App() {
   }, {});
 
   
+  // Load data from database on app startup
   useEffect(() => {
-    const savedItinerary = localStorage.getItem('korea_itinerary');
-    const savedPacking = localStorage.getItem('korea_packing');
-    const savedExpenses = localStorage.getItem('korea_expenses');
-
-    if (savedItinerary) setItinerary(JSON.parse(savedItinerary));
-    if (savedPacking) setPackingList(JSON.parse(savedPacking));
-    if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
+    const loadData = async () => {
+      const data = await db.loadAll()
+      setItinerary(data.itinerary)
+      setPackingList(data.packingList)
+      setExpenses(data.expenses)
+      setKrwRate(data.krwRate)
+    }
+    loadData()
   }, []);
 
+  // Save data to database whenever it changes
   useEffect(() => {
-    localStorage.setItem('korea_itinerary', JSON.stringify(itinerary));
-    localStorage.setItem('korea_packing', JSON.stringify(packingList));
-    localStorage.setItem('korea_expenses', JSON.stringify(expenses));
-    localStorage.setItem('korea_krw_rate', krwRate.toString());
+    const saveData = async () => {
+      await db.saveAll(itinerary, packingList, expenses, krwRate)
+    }
+    saveData()
   }, [itinerary, packingList, expenses, krwRate]);
 
   // itinerary handlers

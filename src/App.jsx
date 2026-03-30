@@ -1960,6 +1960,7 @@ export default function App() {
   const [itinerary, setItinerary] = useState(INITIAL_ITINERARY);
   const [packingList, setPackingList] = useState(INITIAL_PACKING_LIST);
   const [expenses, setExpenses] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false); // Prevent initial save overwrite
   const [newExpense, setNewExpense] = useState(INITIAL_EXPENSE);
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseDateFilter, setExpenseDateFilter] = useState('All');
@@ -2072,12 +2073,14 @@ export default function App() {
       setPackingList(data.packingList)
       setExpenses(data.expenses)
       setKrwRate(data.krwRate)
+      setDataLoaded(true) // Mark data as loaded to prevent initial save wipe
     }
     loadData()
   }, []);
 
   // Save data to database whenever it changes
   useEffect(() => {
+    if (!dataLoaded) return; // Skip initial save until data is loaded from DB
     const saveData = async () => {
       console.log('💾 Save triggered with:', {
         itineraryCount: itinerary.length,
@@ -2089,7 +2092,7 @@ export default function App() {
       console.log('Save result:', result)
     }
     saveData()
-  }, [itinerary, packingList, expenses, krwRate]);
+  }, [itinerary, packingList, expenses, krwRate, dataLoaded]);
 
   // itinerary handlers
   const handleItineraryFieldChange = (dayId, itemId, field, value) => {

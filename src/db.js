@@ -297,7 +297,7 @@ export const db = {
       const result = {
         itinerary: itineraryData?.data || DEFAULT_ITINERARY,
         packingList: packingData?.data || DEFAULT_PACKING_LIST,
-        expenses: expensesData?.data || [],
+        expenses: expensesData ? (expensesData.data || [expensesData]) : [],
         krwRate: settingsData ? parseFloat(settingsData.value) : DEFAULT_KRW_RATE,
       }
 

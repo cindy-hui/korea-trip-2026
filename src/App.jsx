@@ -664,7 +664,7 @@ export default function App() {
         )}
       </main>
 
-      <nav className="bg-white border-t border-slate-200 fixed bottom-0 w-full pb-safe flex justify-around px-3 py-2.5 shadow-sm rounded-t-2xl">
+      <nav className="bg-white border-t border-slate-200 fixed bottom-0 w-full pb-safe flex justify-around px-3 py-2.5 shadow-sm rounded-t-2xl z-20">
         <button
           onClick={() => setActiveTab('itinerary')}
           className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${

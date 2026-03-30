@@ -215,7 +215,7 @@ function ItineraryDayCard({ day, isCollapsed, onToggleCollapse, onFieldChange, o
       className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4 hover:border-indigo-200"
       onDragOver={handleDayDragOver}
       onDrop={handleDayDrop}
-      onDragLeave={handleDragLeave}
+      onDragLeave={handleDayDragLeave}
       onDragEnd={handleDragEnd}
     >
       <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">

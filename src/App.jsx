@@ -906,17 +906,24 @@ function ExpenseForm({
     'Misc': '📦',
   };
 
-  // Category color mapping - all categories use light indigo
+  // Category color mapping
   const categoryColors = {
-    'Food': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
-    'Transport': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
-    'Shopping': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
-    'Activities': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
-    'Accommodation': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
-    'Misc': { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-200' },
+    'Food': { bg: 'bg-yellow-50', text: 'text-yellow-700', border: 'border-yellow-200' },
+    'Transport': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
+    'Shopping': { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
+    'Activities': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+    'Accommodation': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    'Misc': { bg: 'bg-stone-200', text: 'text-stone-700', border: 'border-stone-300' },
   };
 
   const data = formData;
+
+  // Refs for tab buttons
+  const equalBtnRef = useRef(null);
+  const customBtnRef = useRef(null);
+
+  // State for sliding indicator
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
 
   // Helper to calculate equal split amount
   const getEqualSplitAmount = () => {
@@ -958,26 +965,49 @@ function ExpenseForm({
     }
   };
 
-  // Handle participant toggle - need to update splits if in custom mode
+  // Handle participant toggle - preserve custom splits when possible
   const handleToggleParticipant = (friend) => {
-    const newParticipants = data.participants.includes(friend)
+    const isRemoving = data.participants.includes(friend);
+    const newParticipants = isRemoving
       ? data.participants.filter((p) => p !== friend)
       : [...data.participants, friend];
 
     if (data.splitType === 'custom') {
-      // Re-initialize splits with equal distribution for the new participant set
-      const newFormData = { ...data, participants: newParticipants };
+      // Preserve existing split amounts; remove removed participant's split; add new participant with 0
+      const newSplits = { ...data.splits };
+      if (isRemoving) {
+        delete newSplits[friend];
+      } else {
+        newSplits[friend] = 0; // New participant starts with 0, user can adjust
+      }
       onChangeFormData({
-        ...newFormData,
-        splits: initializeCustomSplits(newFormData)
+        ...data,
+        participants: newParticipants,
+        splits: newSplits,
       });
     } else {
       onChangeFormData({
         ...data,
-        participants: newParticipants
+        participants: newParticipants,
       });
     }
   };
+
+  // Update sliding indicator position when split type changes or on resize
+  useEffect(() => {
+    const updateIndicator = () => {
+      if (data.splitType === 'equal' && equalBtnRef.current) {
+        const { offsetLeft, offsetWidth } = equalBtnRef.current;
+        setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
+      } else if (customBtnRef.current) {
+        const { offsetLeft, offsetWidth } = customBtnRef.current;
+        setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
+      }
+    };
+    updateIndicator();
+    window.addEventListener('resize', updateIndicator);
+    return () => window.removeEventListener('resize', updateIndicator);
+  }, [data.splitType]);
 
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-2.5">
@@ -994,7 +1024,7 @@ function ExpenseForm({
         />
       </div>
 
-      <div>
+      <div className="py-0 mb-2">
         <label className="text-xs font-medium text-slate-700 mb-2">Category</label>
         <div className="flex flex-wrap gap-1.5 py-1">
           {PRESET_CATEGORIES.map((cat) => (
@@ -1004,7 +1034,7 @@ function ExpenseForm({
               onClick={() =>
                 onChangeFormData(prev => ({ ...prev, category: cat, categoryTags: [cat] }))
               }
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-full border flex items-center gap-1 ${
                 data.category === cat
                   ? `${categoryColors[cat].bg} ${categoryColors[cat].text} ${categoryColors[cat].border}`
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
@@ -1093,7 +1123,7 @@ function ExpenseForm({
               key={f}
               type="button"
               onClick={() => handleToggleParticipant(f)}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full border flex items-center gap-1 ${
+              className={`px-2.5 py-1 text-xs font-medium rounded-full border flex items-center gap-1 ${
                 data.participants.includes(f)
                   ? 'bg-indigo-100 text-indigo-700 border-indigo-200'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
@@ -1103,41 +1133,71 @@ function ExpenseForm({
             </button>
           ))}
         </div>
-        {data.splitType !== 'custom' && (
-          <p className="text-[11px] text-gray-500 mt-1">
-             👉 Split {data.participants.length} ways: {getEqualSplitAmount().toLocaleString()} {data.currency} each
-          </p>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            onChangeFormData(prev => ({
-              ...prev,
-              splitType: prev.splitType === 'equal' ? 'custom' : 'equal',
-              splits: prev.splitType === 'equal' ? initializeCustomSplits(prev) : undefined
-            }));
-          }}
-          className={`mt-2 inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors ${
-            data.splitType === 'custom'
-              ? 'bg-teal-50 text-teal-700'
-              : 'bg-gray-50 text-gray-700  hover:bg-gray-100'
-          }`}
-        >
+        <div className="mt-2 flex w-full p-1 bg-gray-100 rounded-full relative">
+          {/* Sliding indicator */}
+          <div
+            className="absolute top-1 bottom-1 bg-white rounded-full shadow-sm transition-all duration-200 z-0"
+            style={{ left: indicatorStyle.left, width: indicatorStyle.width }}
+          />
+          <button
+            type="button"
+            ref={equalBtnRef}
+            onClick={() => {
+              onChangeFormData(prev => ({
+                ...prev,
+                splitType: 'equal'
+                // Don't clear splits - preserve them for when we switch back to custom
+              }));
+            }}
+            className={`flex-none px-6 md:px-12 py-1.5 text-xs font-medium rounded-full flex items-center justify-center transition-colors relative z-10 ${
+              data.splitType === 'equal'
+                ? 'text-indigo-700'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {data.splitType === 'equal' && (
+              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+            Split equally
+          </button>
+          <button
+            type="button"
+            ref={customBtnRef}
+            onClick={() => {
+              onChangeFormData(prev => {
+                // Only initialize splits if we don't have existing custom splits
+                const hasExistingSplits = prev.splits && Object.keys(prev.splits).length > 0;
+                const splits = hasExistingSplits ? prev.splits : initializeCustomSplits(prev);
+                return {
+                  ...prev,
+                  splitType: 'custom',
+                  splits,
+                };
+              });
+            }}
+            className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-full flex items-center justify-center transition-colors relative z-10 ${
+              data.splitType === 'custom'
+                ? 'text-indigo-700'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {data.splitType === 'custom' && (
+              <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            )}
+            Specific amounts
+          </button>
+        </div>
+          {data.splitType === 'equal' && (
+            <div className="py-2 px-2.5 text-[11px] text-gray-500">
+               👉 Split {data.participants.length} ways: {getEqualSplitAmount().toLocaleString()} {data.currency} each
+            </div>
+          )}
           {data.splitType === 'custom' && (
-            <svg className="w-3 h-3 text-teal-600" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          )}
-          <span>Input Specific Amounts</span>
-          {data.splitType !== 'custom' && (
-            <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          )}
-        </button>
-        {/* Custom split configuration */}
-        {data.splitType === 'custom' && (
-          <div className="mt-2 border border-slate-200 space-y-3 rounded-lg py-2 px-2.5">
+            <div className="space-y-3 py-2 px-2.5">
             {/* Custom split amounts */}
             {(() => {
               const totalAmount = parseFloat(data.amount) || 0;
@@ -1288,7 +1348,7 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
 
                     {/* Row 2: Paid by and split info */}
                     <div className="text-[10px] text-slate-400">
-                      Paid by {exp.payer} • {exp.splitType === 'custom' ? 'Custom split' : `Split ${exp.participants.length} ways`}
+                      Paid by {exp.payer} • {exp.splitType === 'custom' ? `Split ${exp.participants.length} ways (custom)` : `Split ${exp.participants.length} ways`}
                     </div>
 
                     {/* Row 3: Amount */}

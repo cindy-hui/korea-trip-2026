@@ -234,12 +234,16 @@ export const db = {
         }
       }
 
+      console.log('📥 Loading data from Supabase...')
+
       // Load itinerary
       const { data: itineraryData, error: itineraryError } = await supabase
         .from('itinerary')
         .select('*')
         .limit(1)
         .maybeSingle()
+
+      console.log('📥 Itinerary query result:', { itineraryData, itineraryError })
 
       // Load packing list
       const { data: packingData, error: packingError } = await supabase
@@ -248,12 +252,16 @@ export const db = {
         .limit(1)
         .maybeSingle()
 
+      console.log('📥 Packing query result:', { packingData, packingError })
+
       // Load expenses
       const { data: expensesData, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
         .limit(1)
         .maybeSingle()
+
+      console.log('📥 Expenses query result:', { expensesData, expensesError })
 
       // Load KRW rate
       const { data: settingsData, error: settingsError } = await supabase
@@ -263,8 +271,10 @@ export const db = {
         .limit(1)
         .maybeSingle()
 
+      console.log('📥 Settings query result:', { settingsData, settingsError })
+
       if (itineraryError || packingError || expensesError || settingsError) {
-        console.error('Database load errors:', {
+        console.error('❌ Database load errors:', {
           itineraryError,
           packingError,
           expensesError,
@@ -279,14 +289,23 @@ export const db = {
         }
       }
 
-      return {
+      const result = {
         itinerary: itineraryData?.data || DEFAULT_ITINERARY,
         packingList: packingData?.data || DEFAULT_PACKING_LIST,
         expenses: expensesData?.data || [],
         krwRate: settingsData ? parseFloat(settingsData.value) : DEFAULT_KRW_RATE,
       }
+
+      console.log('📥 Loaded data summary:', {
+        itineraryCount: result.itinerary.length,
+        packingKeys: Object.keys(result.packingList).length,
+        expensesCount: result.expenses.length,
+        krwRate: result.krwRate
+      })
+
+      return result
     } catch (error) {
-      console.error('Failed to load data from database:', error)
+      console.error('❌ Failed to load data from database:', error)
       // Return defaults on any error (network, CORS, etc.)
       return {
         itinerary: DEFAULT_ITINERARY,
@@ -346,14 +365,18 @@ export const db = {
         return { success: true, skipped: true }
       }
 
-      const { error } = await supabase
+      console.log('📤 Saving expenses to Supabase:', expenses)
+      const { data, error } = await supabase
         .from('expenses')
         .upsert({ id: 'main', data: expenses }, { onConflict: 'id' })
+        .select()
+
+      console.log('📤 Supabase response:', { data, error })
 
       if (error) throw error
-      return { success: true }
+      return { success: true, data }
     } catch (error) {
-      console.error('Failed to save expenses:', error)
+      console.error('❌ Failed to save expenses:', error)
       return { success: false, error }
     }
   },

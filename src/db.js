@@ -223,6 +223,17 @@ export const db = {
   // Load all data from database
   async loadAll() {
     try {
+      // Check if supabase is available
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, using default data')
+        return {
+          itinerary: DEFAULT_ITINERARY,
+          packingList: DEFAULT_PACKING_LIST,
+          expenses: [],
+          krwRate: DEFAULT_KRW_RATE,
+        }
+      }
+
       // Load itinerary
       const { data: itineraryData, error: itineraryError } = await supabase
         .from('itinerary')
@@ -253,8 +264,13 @@ export const db = {
         .maybeSingle()
 
       if (itineraryError || packingError || expensesError || settingsError) {
-        console.error('Database load errors:', { itineraryError, packingError, expensesError, settingsError })
-        // Return defaults if any table doesn't exist yet
+        console.error('Database load errors:', {
+          itineraryError,
+          packingError,
+          expensesError,
+          settingsError
+        })
+        // Return defaults if any table doesn't exist yet or query fails
         return {
           itinerary: DEFAULT_ITINERARY,
           packingList: DEFAULT_PACKING_LIST,
@@ -284,6 +300,12 @@ export const db = {
   // Save itinerary to database
   async saveItinerary(itinerary) {
     try {
+      // Check if supabase is available
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, skipping save')
+        return { success: true, skipped: true }
+      }
+
       const { error } = await supabase
         .from('itinerary')
         .upsert({ id: 'main', data: itinerary }, { onConflict: 'id' })
@@ -299,6 +321,11 @@ export const db = {
   // Save packing list to database
   async savePackingList(packingList) {
     try {
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, skipping save')
+        return { success: true, skipped: true }
+      }
+
       const { error } = await supabase
         .from('packing_list')
         .upsert({ id: 'main', data: packingList }, { onConflict: 'id' })
@@ -314,6 +341,11 @@ export const db = {
   // Save expenses to database
   async saveExpenses(expenses) {
     try {
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, skipping save')
+        return { success: true, skipped: true }
+      }
+
       const { error } = await supabase
         .from('expenses')
         .upsert({ id: 'main', data: expenses }, { onConflict: 'id' })
@@ -329,6 +361,11 @@ export const db = {
   // Save KRW rate to database
   async saveKrwRate(krwRate) {
     try {
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, skipping save')
+        return { success: true, skipped: true }
+      }
+
       const { error } = await supabase
         .from('settings')
         .upsert({ key: 'krw_rate', value: krwRate.toString() }, { onConflict: 'key' })

@@ -18,10 +18,6 @@ import {
 } from 'lucide-react';
 import { db, DEFAULT_ITINERARY, DEFAULT_PACKING_LIST, DEFAULT_KRW_RATE } from './db';
 
-// Debug: Check if env variables are loaded
-console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-console.log('Supabase Key exists:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
-
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
 
 const INITIAL_ITINERARY = [

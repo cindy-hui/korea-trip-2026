@@ -261,7 +261,12 @@ export const db = {
         .limit(1)
         .maybeSingle()
 
-      console.log('📥 Expenses query result:', { expensesData, expensesError })
+      console.log('📥 Expenses query result:', {
+        expensesData,
+        expensesError,
+        type: typeof expensesData,
+        keys: expensesData ? Object.keys(expensesData) : null
+      })
 
       // Load KRW rate
       const { data: settingsData, error: settingsError } = await supabase

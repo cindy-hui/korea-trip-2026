@@ -210,13 +210,17 @@ function ItineraryDayCard({ day, isCollapsed, onToggleCollapse, onFieldChange, o
     onDragLeave();
   };
 
+  const handleDayDragEnd = () => {
+    onDragEnd();
+  };
+
   return (
     <div
       className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4 hover:border-indigo-200"
       onDragOver={handleDayDragOver}
       onDrop={handleDayDrop}
       onDragLeave={handleDayDragLeave}
-      onDragEnd={handleDragEnd}
+      onDragEnd={handleDayDragEnd}
     >
       <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-100">
         <div className="flex items-center gap-2 flex-1">

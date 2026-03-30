@@ -18,6 +18,10 @@ import {
 } from 'lucide-react';
 import { db, DEFAULT_ITINERARY, DEFAULT_PACKING_LIST, DEFAULT_KRW_RATE } from './db';
 
+// Debug: Log when save happens
+console.log('db object:', db)
+console.log('db.saveAll type:', typeof db.saveAll)
+
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
 
 const INITIAL_ITINERARY = [
@@ -2075,7 +2079,14 @@ export default function App() {
   // Save data to database whenever it changes
   useEffect(() => {
     const saveData = async () => {
-      await db.saveAll(itinerary, packingList, expenses, krwRate)
+      console.log('💾 Save triggered with:', {
+        itineraryCount: itinerary.length,
+        packingKeys: Object.keys(packingList).length,
+        expensesCount: expenses.length,
+        krwRate
+      })
+      const result = await db.saveAll(itinerary, packingList, expenses, krwRate)
+      console.log('Save result:', result)
     }
     saveData()
   }, [itinerary, packingList, expenses, krwRate]);

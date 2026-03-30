@@ -1,5 +1,5 @@
 // App.jsx
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, Component } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import {
   MapPin,
   ListChecks,
@@ -18,9 +18,7 @@ import {
 } from 'lucide-react';
 import { db, DEFAULT_ITINERARY, DEFAULT_PACKING_LIST, DEFAULT_KRW_RATE } from './db';
 
-// Debug: Log when save happens
-console.log('db object:', db)
-console.log('db.saveAll type:', typeof db.saveAll)
+const DEBUG = import.meta.env.DEV;
 
 const FRIENDS = ['Cindy', 'Leena', 'Mel', 'Soobin'];
 
@@ -860,11 +858,11 @@ function SettlementsSummary({ settlements, netBalances, toHKD }) {
             Settlements
           </h4>
           <ul className="space-y-1">
-            {settlements.map((s, idx) => {
+            {settlements.map((s) => {
               const hkd = toHKD(s.amount, 'KRW');
               return (
                 <li
-                  key={idx}
+                  key={`${s.from}-${s.to}-${s.amount}`}
                   className="flex items-center justify-between py-1.5 px-2 bg-slate-50 rounded-md border border-slate-100"
                 >
                   <div className="flex items-center gap-1.5 flex-1">
@@ -1986,20 +1984,20 @@ export default function App() {
     onConfirm: null,
   });
 
-  const toHKD = (amount, currency) => {
+  const toHKD = useCallback((amount, currency) => {
     if (!amount) return 0;
     if (currency === 'KRW') return amount * krwRate;
     if (currency === 'USD') return amount * 7.8;
     return amount; // HKD or unknown
-  };
+  }, [krwRate]);
 
-  const toKRW = (amount, currency) => {
+  const toKRW = useCallback((amount, currency) => {
     const hkd = toHKD(amount, currency);
     return krwRate > 0 ? hkd / krwRate : 0; // Convert HKD back to KRW, avoid division by zero
-  };
+  }, [krwRate, toHKD]);
 
   // Confirmation dialog handlers
-  const showConfirm = (itemName, onConfirm) => {
+  const showConfirm = useCallback((itemName, onConfirm) => {
     setConfirmState({
       isOpen: true,
       itemName,
@@ -2008,11 +2006,11 @@ export default function App() {
         setConfirmState({ isOpen: false, itemName: '', onConfirm: null });
       },
     });
-  };
+  }, [setConfirmState]);
 
-  const handleCancelConfirm = () => {
+  const handleCancelConfirm = useCallback(() => {
     setConfirmState({ isOpen: false, itemName: '', onConfirm: null });
-  };
+  }, []);
 
   const TRIP_START = '2026-04-06';
   const TRIP_END = '2026-04-10';
@@ -2082,20 +2080,24 @@ export default function App() {
   useEffect(() => {
     if (!dataLoaded) return; // Skip initial save until data is loaded from DB
     const saveData = async () => {
-      console.log('💾 Save triggered with:', {
-        itineraryCount: itinerary.length,
-        packingKeys: Object.keys(packingList).length,
-        expensesCount: expenses.length,
-        krwRate
-      })
+      if (DEBUG) {
+        console.log('💾 Save triggered with:', {
+          itineraryCount: itinerary.length,
+          packingKeys: Object.keys(packingList).length,
+          expensesCount: expenses.length,
+          krwRate
+        })
+      }
       const result = await db.saveAll(itinerary, packingList, expenses, krwRate)
-      console.log('Save result:', result)
+      if (DEBUG) {
+        console.log('Save result:', result)
+      }
     }
     saveData()
   }, [itinerary, packingList, expenses, krwRate, dataLoaded]);
 
-  // itinerary handlers
-  const handleItineraryFieldChange = (dayId, itemId, field, value) => {
+  // itinerary handlers (memoized to prevent unnecessary re-renders)
+  const handleItineraryFieldChange = useCallback((dayId, itemId, field, value) => {
     setItinerary((prev) =>
       prev.map((day) =>
         day.id === dayId
@@ -2108,9 +2110,9 @@ export default function App() {
           : day,
       ),
     );
-  };
+  }, []);
 
-  const addItineraryItem = (dayId) => {
+  const addItineraryItem = useCallback((dayId) => {
     setItinerary((prev) =>
       prev.map((day) =>
         day.id === dayId
@@ -2124,9 +2126,9 @@ export default function App() {
           : day,
       ),
     );
-  };
+  }, []);
 
-  const removeItineraryItem = (dayId, itemId) => {
+  const removeItineraryItem = useCallback((dayId, itemId) => {
     setItinerary((prev) =>
       prev.map((day) =>
         day.id === dayId
@@ -2137,10 +2139,10 @@ export default function App() {
           : day,
       ),
     );
-  };
+  }, []);
 
   // Confirmation wrapper for itinerary item deletion
-  const confirmRemoveItineraryItem = (dayId, itemId) => {
+  const confirmRemoveItineraryItem = useCallback((dayId, itemId) => {
     const day = itinerary.find((d) => d.id === dayId);
     const item = day?.items.find((i) => i.id === itemId);
     if (item) {
@@ -2148,9 +2150,9 @@ export default function App() {
         removeItineraryItem(dayId, itemId);
       });
     }
-  };
+  }, [itinerary, showConfirm, removeItineraryItem]);
 
-  const reorderItineraryItems = (dayId, fromIndex, toIndex) => {
+  const reorderItineraryItems = useCallback((dayId, fromIndex, toIndex) => {
     setItinerary((prev) =>
       prev.map((day) => {
         if (day.id !== dayId) return day;
@@ -2165,9 +2167,9 @@ export default function App() {
         };
       }),
     );
-  };
+  }, []);
 
-  const moveItineraryItem = (sourceDayId, destDayId, sourceIndex, destIndex) => {
+  const moveItineraryItem = useCallback((sourceDayId, destDayId, sourceIndex, destIndex) => {
     setItinerary((prev) => {
       const sourceDay = prev.find((day) => day.id === sourceDayId);
       if (!sourceDay) return prev;
@@ -2188,45 +2190,45 @@ export default function App() {
         return day;
       });
     });
-  };
+  }, []);
 
-  // packing handlers
-  const togglePackingItem = (category, itemId) => {
+  // packing handlers (memoized to prevent unnecessary re-renders)
+  const togglePackingItem = useCallback((category, itemId) => {
     setPackingList((prev) => ({
       ...prev,
       [category]: prev[category].map((item) =>
         item.id === itemId ? { ...item, checked: !item.checked } : item,
       ),
     }));
-  };
+  }, []);
 
-  const updatePackingItemName = (category, id, value) => {
+  const updatePackingItemName = useCallback((category, id, value) => {
     setPackingList((prev) => ({
       ...prev,
       [category]: prev[category].map((item) =>
         item.id === id ? { ...item, name: value } : item,
       ),
     }));
-  };
+  }, []);
 
-  const addPackingItem = (category) => {
+  const addPackingItem = useCallback((category) => {
     const id = Date.now();
     setPackingList((prev) => ({
       ...prev,
       [category]: [...prev[category], { id, name: '', checked: false }],
     }));
     return id;
-  };
+  }, []);
 
-  const removePackingItem = (category, id) => {
+  const removePackingItem = useCallback((category, id) => {
     setPackingList((prev) => ({
       ...prev,
       [category]: prev[category].filter((item) => item.id !== id),
     }));
-  };
+  }, []);
 
   // Confirmation wrapper for packing item deletion
-  const confirmRemovePackingItem = (category, id) => {
+  const confirmRemovePackingItem = useCallback((category, id) => {
     const categoryItems = packingList[category];
     const item = categoryItems?.find((i) => i.id === id);
     if (item) {
@@ -2234,9 +2236,9 @@ export default function App() {
         removePackingItem(category, id);
       });
     }
-  };
+  }, [packingList, showConfirm, removePackingItem]);
 
-    const addPackingCategory = () => {
+  const addPackingCategory = useCallback(() => {
     const baseName = 'New section';
     let name = baseName;
     let counter = 1;
@@ -2251,9 +2253,9 @@ export default function App() {
       ...prev,
       [name]: [],
     }));
-  };
+  }, [packingList]);
 
-  const renamePackingCategory = (oldName, newName) => {
+  const renamePackingCategory = useCallback((oldName, newName) => {
     if (!newName || oldName === newName || packingList[newName]) return;
 
     setPackingList((prev) => {
@@ -2263,44 +2265,44 @@ export default function App() {
         [newName]: items,
       };
     });
-  };
+  }, [packingList]);
 
-  const removePackingCategory = (name) => {
+  const removePackingCategory = useCallback((name) => {
     setPackingList((prev) => {
       const { [name]: _removed, ...rest } = prev;
       return rest;
     });
-  };
+  }, []);
 
   // Confirmation wrapper for packing category deletion
-  const confirmRemovePackingCategory = (name) => {
+  const confirmRemovePackingCategory = useCallback((name) => {
     showConfirm(name || 'this category', () => {
       removePackingCategory(name);
     });
-  };
+  }, [showConfirm, removePackingCategory]);
 
-  // expense handlers
-  const addExpense = (e) => {
+  // expense handlers (memoized to prevent unnecessary re-renders)
+  const addExpense = useCallback((e) => {
     e.preventDefault();
-    console.log('Add expense clicked:', newExpense); // Debug log
+    if (DEBUG) console.log('Add expense clicked:', newExpense);
     // Validate description
     if (!newExpense.desc?.trim()) {
-      console.warn('Description is required');
+      if (DEBUG) console.warn('Description is required');
       return false;
     }
     // Validate amount
     if (!newExpense.amount) {
-      console.warn('Amount is required');
+      if (DEBUG) console.warn('Amount is required');
       return false;
     }
     const amountNum = parseFloat(newExpense.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      console.warn('Invalid amount:', newExpense.amount);
+      if (DEBUG) console.warn('Invalid amount:', newExpense.amount);
       return false;
     }
     // Validate participants
     if (newExpense.participants.length === 0) {
-      console.warn('At least one participant is required');
+      if (DEBUG) console.warn('At least one participant is required');
       return false;
     }
 
@@ -2335,24 +2337,24 @@ export default function App() {
       participants: [...FRIENDS],
     });
     return true;
-  };
+  }, [newExpense, DEBUG]);
 
-  const removeExpense = (id) => {
+  const removeExpense = useCallback((id) => {
     setExpenses((prev) => prev.filter((exp) => exp.id !== id));
-  };
+  }, []);
 
   // Confirmation wrapper for expense deletion
-  const confirmRemoveExpense = (id) => {
+  const confirmRemoveExpense = useCallback((id) => {
     const expense = expenses.find((exp) => exp.id === id);
     if (expense) {
       showConfirm(expense.desc || 'this expense', () => {
         removeExpense(id);
       });
     }
-  };
+  }, [expenses, showConfirm, removeExpense]);
 
   // Expense editing handlers
-  const startEditExpense = (expense) => {
+  const startEditExpense = useCallback((expense) => {
     setEditingExpenseId(expense.id);
     setEditFormData({
       desc: expense.desc,
@@ -2366,9 +2368,9 @@ export default function App() {
       splitType: expense.splitType || 'equal',
       splits: expense.splits || {},
     });
-  };
+  }, []);
 
-  const updateExpense = (e) => {
+  const updateExpense = useCallback((e) => {
     e.preventDefault();
     if (
       !editFormData.desc?.trim() ||
@@ -2409,14 +2411,14 @@ export default function App() {
     );
     setEditingExpenseId(null);
     setEditFormData(INITIAL_EXPENSE);
-  };
+  }, [editFormData, editingExpenseId]);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditingExpenseId(null);
     setEditFormData(INITIAL_EXPENSE);
-  };
+  }, []);
 
-  const toggleParticipant = (friend) => {
+  const toggleParticipant = useCallback((friend) => {
     setNewExpense((prev) => {
       const newParticipants = prev.participants.includes(friend)
         ? prev.participants.filter((p) => p !== friend)
@@ -2442,7 +2444,7 @@ export default function App() {
         participants: newParticipants,
       };
     });
-  };
+  }, []);
 
   const calculateNetBalances = () => {
     const balances = {};

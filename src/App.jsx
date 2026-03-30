@@ -1078,7 +1078,7 @@ function ExpenseForm({
         </div>
       </div>
 
-      <div className="flex space-x-2 py-1 mb-2">
+      <div className="flex space-x-2 py-1 mb-3">
         <div className="flex-1">
           <label className="text-xs font-medium text-slate-700 mb-2">Paid by</label>
           <select

@@ -65,20 +65,17 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
                         <h4 className="text-sm font-medium text-slate-800 leading-snug mb-1">
                           {exp.desc}
                         </h4>
-                        <div className="text-[10px] text-slate-400 mb-1">
+                        <div className="text-[10px] text-slate-400 mb-2">
                           Paid by {exp.payer} • {exp.splitType === 'custom' ? `Split ${exp.participants.length} ways (custom)` : `Split ${exp.participants.length} ways`}
                         </div>
-                        <div className="flex justify-end items-center gap-2">
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            ≈ {conversionValue.toLocaleString()} {conversionLabel}
-                          </div>
+                        <div className="flex justify-end items-end gap-2">
                           <div className="text-right">
-                            <span className="font-mono font-bold text-sm text-slate-800">
-                              {exp.amount.toLocaleString()}
-                            </span>
-                            <span className="text-xs text-slate-600 ml-0.5 font-mono">
-                              {currency}
-                            </span>
+                            <div className="font-mono font-bold text-sm text-slate-800">
+                              {exp.amount.toLocaleString()} {currency}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              ≈ {conversionValue.toLocaleString()} {conversionLabel}
+                            </div>
                           </div>
                         </div>
                       </div>

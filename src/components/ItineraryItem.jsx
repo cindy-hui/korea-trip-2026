@@ -35,15 +35,26 @@ function ItineraryItem({
         {isEditing ? (
           <div className="flex gap-2 w-full">
             <div className="flex-1 space-y-1">
-              <input
-                type="text"
-                value={item.text}
-                placeholder="Activity"
-                onChange={(e) =>
-                  onFieldChange(dayId, item.id, 'text', e.target.value)
-                }
-                className="w-full text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
-              />
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={item.text}
+                  placeholder="Activity"
+                  onChange={(e) =>
+                    onFieldChange(dayId, item.id, 'text', e.target.value)
+                  }
+                  className="flex-1 text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+                <input
+                  type="text"
+                  value={item.time || ''}
+                  placeholder="Time"
+                  onChange={(e) =>
+                    onFieldChange(dayId, item.id, 'time', e.target.value)
+                  }
+                  className="w-24 text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
               <input
                 type="text"
                 value={item.mapQuery || ''}
@@ -66,7 +77,14 @@ function ItineraryItem({
           </div>
         ) : (
           <>
-            <p className="text-sm font-medium leading-snug">{item.text}</p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-medium leading-snug flex-1">{item.text}</p>
+              {item.time && (
+                <span className="text-xs font-medium text-white bg-indigo-500 px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0">
+                  {item.time}
+                </span>
+              )}
+            </div>
             {item.mapQuery && (
               <a
                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(

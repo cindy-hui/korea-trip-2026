@@ -182,7 +182,7 @@ export default function App() {
               ...day,
               items: [
                 ...day.items,
-                { id: Date.now(), text: '', mapQuery: '', tips: '' },
+                { id: Date.now(), text: '', time: '', mapQuery: '', tips: '' },
               ],
             }
           : day,

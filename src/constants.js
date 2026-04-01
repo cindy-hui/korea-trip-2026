@@ -14,6 +14,7 @@ export const INITIAL_ITINERARY = [
         text: '✈️ Arrive at Seoul Incheon Airport at 5.10 AM',
         mapQuery: 'Incheon Airport',
         tips: 'Buy a T-Money card at the convenience store and withdraw some KRW cash here.',
+        time: '5:10 AM',
       },
       {
         id: 12,
@@ -91,6 +92,7 @@ export const INITIAL_ITINERARY = [
         text: '🌉 Banpo Bridge Sunset & Night Picnic',
         mapQuery: 'Banpo Bridge',
         tips: 'Moonlight Rainbow Fountain Shows: 19:30, 20:00, 20:30, 21:00. Bring a mat and order fried chicken delivery!',
+        time: '6:30 PM',
       },
     ],
   },
@@ -108,6 +110,7 @@ export const INITIAL_ITINERARY = [
         id: 32,
         text: '✈️ Leena leaves for Incheon (Flight at 3:25 PM)',
         tips: 'Leave hotel by 12:30 PM latest to be safe.',
+        time: '3:25 PM',
       },
       {
         id: 33,
@@ -135,7 +138,7 @@ export const INITIAL_ITINERARY = [
         mapQuery: 'Yeouido Hangang Park',
         tips: 'Spring Flower Festival! Expect crowds but beautiful cherry blossoms.',
       },
-      { id: 38, text: '🍸 Bar hop & Night Out' },
+      { id: 38, text: '🍸 Bar hop & Night Out', time: '9:00 PM' },
     ],
   },
   {
@@ -164,6 +167,7 @@ export const INITIAL_ITINERARY = [
         id: 45,
         text: '🍸 Bar hop & Night Spaces',
         mapQuery: 'Itaewon',
+        time: '9:00 PM',
       },
     ],
   },
@@ -177,6 +181,7 @@ export const INITIAL_ITINERARY = [
         id: 52,
         text: '✈️ Mel & Cindy Leave for Incheon at 12 AM (Flight 2:30 AM)',
         tips: 'Pack luggage beforehand and do tax refunds at the airport.',
+        time: '12:00 AM',
       },
     ],
   },

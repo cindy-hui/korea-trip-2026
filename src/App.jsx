@@ -605,7 +605,7 @@ export default function App() {
         </p>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-6 pb-24">
+      <main className="flex-1 overflow-y-auto px-0 py-6 pb-24">
         {activeTab === 'itinerary' && (
           <ItineraryTab
             itinerary={itinerary}

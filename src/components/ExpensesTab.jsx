@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Plus, X } from 'lucide-react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { FRIENDS } from '../constants';
 import SettlementsSummary from './SettlementsSummary';
 import PieChart from './PieChart';
 import ExpensesList from './ExpensesList';
-import ExpenseForm from './ExpenseForm';
+import ExpenseModal from './ExpenseModal';
 
 function ExpensesTab({
   expenses,
@@ -51,40 +51,40 @@ function ExpensesTab({
     'Misc': '📦',
   };
 
-  const [sheetMode, setSheetMode] = useState(null); // 'add' | 'edit' | null
+  const [modalMode, setModalMode] = useState(null); // 'add' | 'view' | 'edit' | null
+  const [selectedExpense, setSelectedExpense] = useState(null);
   const [topCardIndex, setTopCardIndex] = useState(0);
-  const formRef = useRef(null);
 
-  // Sync bottom sheet with editingExpenseId prop (using useLayoutEffect to prevent flicker)
+  // Sync modal with editingExpenseId prop for edit mode
   useLayoutEffect(() => {
-    if (editingExpenseId) {
-      setSheetMode('edit');
+    if (editingExpenseId && modalMode === 'edit') {
+      // already in edit mode, fine
+    } else if (editingExpenseId) {
+      setModalMode('edit');
     }
   }, [editingExpenseId]);
 
   useLayoutEffect(() => {
-    if (!editingExpenseId && sheetMode === 'edit') {
-      setSheetMode(null);
+    if (!editingExpenseId && modalMode === 'edit') {
+      setModalMode(null);
+      setSelectedExpense(null);
     }
-  }, [editingExpenseId, sheetMode]);
+  }, [editingExpenseId, modalMode]);
 
-  // Close sheet on Escape key
+  // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && sheetMode) {
-        if (sheetMode === 'edit') {
-          onCancelEdit();
-        }
-        setSheetMode(null);
+      if (e.key === 'Escape' && modalMode) {
+        closeModal();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [sheetMode, onCancelEdit]);
+  }, [modalMode]);
 
   // Participant toggle handler works for both add and edit modes
   const handleToggleParticipant = (friend) => {
-    if (sheetMode === 'edit') {
+    if (modalMode === 'edit') {
       // Edit mode: toggle in editFormData
       onChangeEditFormData((prev) => ({
         ...prev,
@@ -92,24 +92,25 @@ function ExpensesTab({
           ? prev.participants.filter((p) => p !== friend)
           : [...prev.participants, friend],
       }));
-    } else {
+    } else if (modalMode === 'add') {
       // Add mode: use the passed handler
       onToggleParticipant(friend);
     }
   };
 
-  const closeSheet = () => {
-    if (sheetMode === 'edit') {
+  const closeModal = () => {
+    if (modalMode === 'edit') {
       onCancelEdit();
     }
-    setSheetMode(null);
+    setModalMode(null);
+    setSelectedExpense(null);
   };
 
-  const openAddSheet = () => {
+  const openAddModal = () => {
     if (editingExpenseId) {
       onCancelEdit(); // cancel any ongoing edit
     }
-    // Reset form data to initial state when opening add sheet
+    // Reset form data to initial state when opening add modal
     onChangeNewExpense({
       desc: '',
       amount: '',
@@ -119,10 +120,37 @@ function ExpensesTab({
       categoryTags: ['Food'],
       currency: 'KRW',
       date: new Date().toISOString().split('T')[0],
-      splitType: 'equal', // 'equal' or 'custom'
-      splits: {}, // { [friend]: amount } (optional, used when splitType is 'custom')
+      splitType: 'equal',
+      splits: {},
     });
-    setSheetMode('add');
+    setSelectedExpense(null);
+    setModalMode('add');
+  };
+
+  const openViewModal = (expense) => {
+    setSelectedExpense(expense);
+    setModalMode('view');
+  };
+
+  const openEditModal = (expense) => {
+    // Use the existing startEdit handler to populate editFormData
+    onStartEditExpense(expense);
+    setSelectedExpense(expense);
+    setModalMode('edit');
+  };
+
+  const handleDeleteExpense = (expenseId) => {
+    onRemoveExpense(expenseId);
+    // onRemoveExpense already updates state
+    closeModal();
+  };
+
+  const handleAddSubmit = (e) => {
+    const success = onAddExpense(e);
+    if (success) {
+      closeModal();
+    }
+    return success;
   };
 
   return (
@@ -152,7 +180,7 @@ function ExpensesTab({
         >
           {/* Card 1: Who owes whom? */}
           <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
-            <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
+            <div className="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-bold text-slate-800 text-base">💰 Who owes whom?</h3>
@@ -183,7 +211,7 @@ function ExpensesTab({
 
           {/* Card 2: Expense Summary - matching style */}
           <div className="flex-shrink-0 w-[calc(100%-1rem)] snap-center flex flex-col">
-            <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
+            <div className="bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200 flex-1 flex flex-col">
               <div className="mb-3">
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="font-bold text-slate-800 text-base">📊 Expense Summary</h3>
@@ -248,7 +276,7 @@ function ExpensesTab({
       {/* Add Expense CTA Button */}
       <button
         type="button"
-        onClick={openAddSheet}
+        onClick={openAddModal}
         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
       >
         <Plus className="w-5 h-5" />
@@ -256,7 +284,7 @@ function ExpensesTab({
       </button>
 
       {/* Recent Expenses Section */}
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+      <div className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2.5">
             <h3 className="font-bold text-slate-800 text-base">🧾 Recent Expenses</h3>
@@ -307,74 +335,27 @@ function ExpensesTab({
         </div>
         <ExpensesList
           groupedByDate={groupedByDate}
-          onRemove={onRemoveExpense}
-          onEdit={onStartEditExpense}
+          onExpenseClick={openViewModal}
           toHKD={toHKD}
           toKRW={toKRW}
         />
       </div>
 
-      {/* Modal */}
-      {sheetMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
-            onClick={closeSheet}
-          ></div>
-          {/* Modal Content */}
-          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
-              <h3 className="text-lg font-bold text-slate-800">
-                {sheetMode === 'add' ? 'Add Expense' : 'Edit Expense'}
-              </h3>
-              <button
-                onClick={closeSheet}
-                className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            {/* Form content with scroll */}
-            <div className="flex-1 overflow-y-auto px-4 pt-0 pb-3">
-              <div className="border border-indigo-200 rounded-xl py-2 p-3">
-                <ExpenseForm
-                  friends={FRIENDS}
-                  formRef={formRef}
-                  formData={sheetMode === 'add' ? newExpense : editFormData}
-                  onChangeFormData={
-                    sheetMode === 'add' ? onChangeNewExpense : onChangeEditFormData
-                  }
-                  onToggleParticipant={handleToggleParticipant}
-                  onSubmit={
-                    sheetMode === 'add'
-                      ? (e) => {
-                          const success = onAddExpense(e);
-                          if (success) closeSheet();
-                        }
-                      : onUpdateExpense
-                  }
-                  isEditing={sheetMode === 'edit'}
-                />
-              </div>
-            </div>
-            {/* Submit Button */}
-            <div className="px-4 pb-4 flex-shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  if (formRef.current) {
-                    formRef.current.requestSubmit();
-                  }
-                }}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-colors"
-              >
-                {sheetMode === 'add' ? 'Add' : 'Update'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Expense Modal */}
+      {modalMode && (
+        <ExpenseModal
+          mode={modalMode}
+          expense={selectedExpense}
+          formData={modalMode === 'add' ? newExpense : editFormData}
+          onChangeFormData={modalMode === 'add' ? onChangeNewExpense : onChangeEditFormData}
+          onSubmit={modalMode === 'add' ? handleAddSubmit : onUpdateExpense}
+          onClose={closeModal}
+          onDelete={handleDeleteExpense}
+          onEdit={openEditModal}
+          friends={FRIENDS}
+          toHKD={toHKD}
+          toKRW={toKRW}
+        />
       )}
     </div>
     </>

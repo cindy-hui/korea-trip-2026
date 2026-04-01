@@ -1,7 +1,6 @@
 import React from 'react';
-import { Edit3, Trash2 } from 'lucide-react';
 
-function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
+function ExpensesList({ groupedByDate, onExpenseClick, toHKD, toKRW }) {
   const dates = Object.keys(groupedByDate).sort((a, b) => (a < b ? 1 : -1));
 
   // Category emoji mapping for expense cards
@@ -16,12 +15,12 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
 
   // Category circle color mapping
   const categoryColors = {
-    'Food': { bg: 'bg-yellow-50', text: 'text-yellow-700' },
-    'Transport': { bg: 'bg-red-50', text: 'text-red-700' },
-    'Shopping': { bg: 'bg-pink-50', text: 'text-pink-700' },
-    'Activities': { bg: 'bg-orange-50', text: 'text-orange-700' },
-    'Accommodation': { bg: 'bg-blue-50', text: 'text-blue-700' },
-    'Misc': { bg: 'bg-stone-200', text: 'text-stone-700' },
+    'Food': { cardBg: 'bg-yellow-50/70', badgeBg: 'bg-yellow-100', text: 'text-yellow-700' },
+    'Transport': { cardBg: 'bg-red-50/70', badgeBg: 'bg-red-100', text: 'text-red-700' },
+    'Shopping': { cardBg: 'bg-pink-50/70', badgeBg: 'bg-pink-100', text: 'text-pink-700' },
+    'Activities': { cardBg: 'bg-orange-50/70', badgeBg: 'bg-orange-100', text: 'text-orange-700' },
+    'Accommodation': { cardBg: 'bg-blue-50/70', badgeBg: 'bg-blue-100', text: 'text-blue-700' },
+    'Misc': { cardBg: 'bg-stone-200/70', badgeBg: 'bg-stone-300', text: 'text-stone-700' },
   };
 
   return (
@@ -43,57 +42,45 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
               // Show conversion to the other currency
               const conversionValue = currency === 'HKD' ? Math.round(krw) : Math.round(hkd);
               const conversionLabel = currency === 'HKD' ? 'KRW' : 'HKD';
+              const category = (exp.categoryTags || [exp.category])[0];
+              const colors = categoryColors[category] || categoryColors['Misc'];
               return (
                 <div
                   key={exp.id}
-                  className="bg-white rounded-lg border border-slate-200"
+                  className={`${colors.cardBg} rounded-xl cursor-pointer hover:bg-opacity-80 transition-colors`}
+                  onClick={() => onExpenseClick(exp)}
                 >
                   <div className="p-3">
-                    {/* Row 1: Category + Description + Actions */}
-                    <div className="flex items-start gap-2">
+                    <div className="flex items-center gap-2">
                       {(() => {
                         const category = (exp.categoryTags || [exp.category])[0];
                         const colors = categoryColors[category] || categoryColors['Misc'];
                         const emoji = categoryEmojis[category] || '📦';
                         return (
-                          <span className={`w-6 h-6 flex items-center justify-center text-sm ${colors.bg} ${colors.text} rounded-md flex-shrink-0 mt-0.5`}>
+                          <span className={`w-6 h-6 flex items-center justify-center text-sm ${colors.badgeBg} ${colors.text} rounded-md flex-shrink-0`}>
                             {emoji}
                           </span>
                         );
                       })()}
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-slate-800 leading-snug mb-1">
+
+                      {/* Left side: title and paid by */}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-slate-800 leading-snug truncate">
                           {exp.desc}
                         </h4>
-                        <div className="text-[10px] text-slate-400 mb-2">
+                        <div className="text-[10px] text-slate-400">
                           Paid by {exp.payer} • {exp.splitType === 'custom' ? `Split ${exp.participants.length} ways (custom)` : `Split ${exp.participants.length} ways`}
                         </div>
-                        <div className="flex justify-end items-end gap-2">
-                          <div className="text-right">
-                            <div className="font-mono font-bold text-sm text-slate-800">
-                              {exp.amount.toLocaleString()} {currency}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-mono">
-                              ≈ {conversionValue.toLocaleString()} {conversionLabel}
-                            </div>
-                          </div>
-                        </div>
                       </div>
-                      <div className="flex flex-col gap-1 flex-shrink-0 ml-2">
-                        <button
-                          onClick={() => onEdit(exp)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                          title="Edit expense"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onRemove(exp.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Delete expense"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+
+                      {/* Right side: amount stacked with conversion */}
+                      <div className="flex-shrink-0 text-right mr-2">
+                        <div className="font-mono font-bold text-sm text-slate-800">
+                          {exp.amount.toLocaleString()} {currency}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          ≈ {conversionValue.toLocaleString()} {conversionLabel}
+                        </div>
                       </div>
                     </div>
                   </div>

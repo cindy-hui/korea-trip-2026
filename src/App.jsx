@@ -417,16 +417,17 @@ export default function App() {
 
   // Expense editing handlers
   const startEditExpense = (expense) => {
+    if (!expense) return;
     setEditingExpenseId(expense.id);
     setEditFormData({
-      desc: expense.desc,
-      amount: expense.amount.toString(),
-      currency: expense.currency,
-      category: expense.category,
-      categoryTags: expense.categoryTags || [expense.category],
-      payer: expense.payer,
-      participants: [...expense.participants],
-      date: expense.date,
+      desc: expense.desc || '',
+      amount: expense.amount?.toString() || '',
+      currency: expense.currency || 'KRW',
+      category: expense.category || 'Food',
+      categoryTags: expense.categoryTags || [expense.category || 'Food'],
+      payer: expense.payer || FRIENDS[0],
+      participants: expense.participants || FRIENDS,
+      date: expense.date || new Date().toISOString().split('T')[0],
       splitType: expense.splitType || 'equal',
       splits: expense.splits || {},
     });

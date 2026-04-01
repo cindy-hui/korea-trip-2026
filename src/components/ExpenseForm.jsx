@@ -128,7 +128,7 @@ function ExpenseForm({
   return (
     <form ref={formRef} onSubmit={onSubmit} className="space-y-2.5">
       <div className="py-0 mb-2">
-        <label className="text-xs font-medium text-slate-700">What was it for?</label>
+        <label className="text-xs font-medium text-slate-600">What was it for?</label>
         <input
           type="text"
           value={data.desc}
@@ -141,7 +141,7 @@ function ExpenseForm({
       </div>
 
       <div className="py-0 mb-2">
-        <label className="text-xs font-medium text-slate-700 mb-2">Category</label>
+        <label className="text-xs font-medium text-slate-600 mb-2">Category</label>
         <div className="flex flex-wrap gap-1.5 py-1">
           {PRESET_CATEGORIES.map((cat) => (
             <button
@@ -165,7 +165,7 @@ function ExpenseForm({
 
       <div className="flex space-x-4 mb-2">
         <div className="flex-1">
-          <label className="text-xs font-medium text-slate-700">Amount</label>
+          <label className="text-xs font-medium text-slate-600">Amount</label>
           <input
             type="number"
             step="0.01"
@@ -179,7 +179,7 @@ function ExpenseForm({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-slate-700 mb-2">Currency</label>
+          <label className="text-xs font-medium text-slate-600 mb-2">Currency</label>
           <select
             value={data.currency}
             onChange={(e) =>
@@ -196,7 +196,7 @@ function ExpenseForm({
 
       <div className="flex space-x-2 py-1 mb-3">
         <div className="flex-1">
-          <label className="text-xs font-medium text-slate-700 mb-2">Paid by</label>
+          <label className="text-xs font-medium text-slate-600 mb-2">Paid by</label>
           <select
             value={data.payer}
             onChange={(e) =>
@@ -213,7 +213,7 @@ function ExpenseForm({
         </div>
 
         <div className="flex-1">
-          <label className="text-xs font-medium text-slate-700 mb-2">Date</label>
+          <label className="text-xs font-medium text-slate-600 mb-2">Date</label>
           <input
             type="date"
             value={data.date}
@@ -228,7 +228,7 @@ function ExpenseForm({
 
       <div className="mb-0.5">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-slate-700">Split Among</label>
+          <label className="text-xs font-medium text-slate-600">Split Among</label>
         </div>
         <p className="text-[11px] text-gray-500 mb-1.5">
           Equal split by default. Input below for specific amounts.

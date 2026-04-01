@@ -45,7 +45,7 @@ function ItineraryItem({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
     >
-      <div className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-md mb-2 last:mb-0">
+      <div className="bg-white rounded-lg overflow-hidden shadow-md mb-2 last:mb-0">
         <div className="flex">
           <div className="w-1 bg-indigo-300 flex-shrink-0" />
           <div className="flex-1 p-3">

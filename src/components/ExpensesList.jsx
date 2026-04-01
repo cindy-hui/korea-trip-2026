@@ -50,21 +50,39 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
                 >
                   <div className="p-3">
                     {/* Row 1: Category + Description + Actions */}
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-start gap-2">
                       {(() => {
                         const category = (exp.categoryTags || [exp.category])[0];
                         const colors = categoryColors[category] || categoryColors['Misc'];
                         const emoji = categoryEmojis[category] || '📦';
                         return (
-                          <span className={`w-6 h-6 flex items-center justify-center text-sm ${colors.bg} ${colors.text} rounded-md flex-shrink-0`}>
+                          <span className={`w-6 h-6 flex items-center justify-center text-sm ${colors.bg} ${colors.text} rounded-md flex-shrink-0 mt-0.5`}>
                             {emoji}
                           </span>
                         );
                       })()}
-                      <h4 className="text-sm font-medium text-slate-800 leading-snug flex-1 truncate">
-                        {exp.desc}
-                      </h4>
-                      <div className="flex gap-1 flex-shrink-0">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-slate-800 leading-snug mb-1">
+                          {exp.desc}
+                        </h4>
+                        <div className="text-[10px] text-slate-400 mb-1">
+                          Paid by {exp.payer} • {exp.splitType === 'custom' ? `Split ${exp.participants.length} ways (custom)` : `Split ${exp.participants.length} ways`}
+                        </div>
+                        <div className="flex justify-end items-center gap-2">
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            ≈ {conversionValue.toLocaleString()} {conversionLabel}
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-bold text-sm text-slate-800">
+                              {exp.amount.toLocaleString()}
+                            </span>
+                            <span className="text-xs text-slate-600 ml-0.5 font-mono">
+                              {currency}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1 flex-shrink-0 ml-2">
                         <button
                           onClick={() => onEdit(exp)}
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
@@ -79,26 +97,6 @@ function ExpensesList({ groupedByDate, onRemove, onEdit, toHKD, toKRW }) {
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </div>
-                    </div>
-
-                    {/* Row 2: Paid by and split info */}
-                    <div className="text-[10px] text-slate-400">
-                      Paid by {exp.payer} • {exp.splitType === 'custom' ? `Split ${exp.participants.length} ways (custom)` : `Split ${exp.participants.length} ways`}
-                    </div>
-
-                    {/* Row 3: Amount */}
-                    <div className="flex justify-end items-center gap-2">
-                      <div className="text-[10px] text-slate-400 font-mono">
-                        ≈ {conversionValue.toLocaleString()} {conversionLabel}
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono font-bold text-sm text-slate-800">
-                          {exp.amount.toLocaleString()}
-                        </span>
-                        <span className="text-xs text-slate-600 ml-0.5 font-mono">
-                          {currency}
-                        </span>
                       </div>
                     </div>
                   </div>

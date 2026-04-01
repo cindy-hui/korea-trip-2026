@@ -76,13 +76,13 @@ function ItineraryDayCard({
 
   return (
     <div
-      className={`bg-white p-5 rounded-2xl shadow-sm border transition-all ${isDragOver ? 'border-indigo-400 ring-2 ring-indigo-100' : 'border-slate-100'}`}
+      className={`px-0 transition-all ${isDragOver ? 'border-l-4 border-indigo-200' : ''}`}
       onDragLeave={() => {
         setIsDragOver(false);
         setDropTargetIndex(null);
       }}
     >
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-3">
         <button
           onClick={onToggleCollapse}
           className="flex items-center justify-center text-sm font-medium text-slate-500 hover:text-slate-700 p-1 mr-2 flex-shrink-0 transition-colors"
@@ -103,17 +103,19 @@ function ItineraryDayCard({
             {day.date}
           </p>
         </div>
-        <button
-          onClick={onToggleEdit}
-          className="flex items-center justify-center text-sm font-medium text-indigo-500 bg-indigo-50 p-2 rounded-full flex-shrink-0 hover:bg-indigo-100 transition-colors"
-          aria-label={isEditing ? "Save" : "Edit"}
-        >
-          {isEditing ? (
-            <Save className="w-4 h-4" />
-          ) : (
-            <Edit3 className="w-4 h-4" />
-          )}
-        </button>
+        {!isCollapsed && (
+          <button
+            onClick={onToggleEdit}
+            className="flex items-center justify-center text-sm font-medium text-indigo-500 bg-indigo-50 p-2 rounded-full flex-shrink-0 hover:bg-indigo-100 transition-colors"
+            aria-label={isEditing ? "Save" : "Edit"}
+          >
+            {isEditing ? (
+              <Save className="w-4 h-4" />
+            ) : (
+              <Edit3 className="w-4 h-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {isEditing && (
@@ -124,7 +126,7 @@ function ItineraryDayCard({
       )}
 
       {!isCollapsed && (
-        <ul className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+        <ul className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
           {day.items.map((item, idx) => (
             <React.Fragment key={item.id}>
               {dropTargetIndex === idx && draggedItemIndex !== idx && (

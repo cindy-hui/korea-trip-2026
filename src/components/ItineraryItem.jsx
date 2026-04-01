@@ -35,7 +35,7 @@ function ItineraryItem({
         {isEditing ? (
           <div className="flex gap-2 w-full">
             <div className="flex-1 space-y-1">
-              <div className="flex gap-2 items-center">
+              <div className="flex sm:items-center gap-2">
                 <input
                   type="text"
                   value={item.text}
@@ -43,7 +43,7 @@ function ItineraryItem({
                   onChange={(e) =>
                     onFieldChange(dayId, item.id, 'text', e.target.value)
                   }
-                  className="flex-1 text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="flex-1 min-w-0 text-sm p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 />
                 <input
                   type="text"
@@ -52,7 +52,7 @@ function ItineraryItem({
                   onChange={(e) =>
                     onFieldChange(dayId, item.id, 'time', e.target.value)
                   }
-                  className="w-24 text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  className="w-16 sm:w-24 text-xs p-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 flex-shrink-0"
                 />
               </div>
               <input

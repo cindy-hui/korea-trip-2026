@@ -1,31 +1,60 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { X, Edit3, Trash2 } from 'lucide-react';
 import ExpenseForm from './ExpenseForm';
 
-function ExpenseModal({
-  mode,
-  expense,
-  formData,
-  onChangeFormData,
-  onSubmit,
-  onClose,
-  onDelete,
-  onEdit,
-  friends,
-  toHKD,
-  toKRW,
-}) {
+const ExpenseModal = forwardRef(
+  (
+    {
+      mode,
+      expense,
+      formData,
+      onChangeFormData,
+      onSubmit,
+      onClose,
+      onDelete,
+      onEdit,
+      friends,
+      toHKD,
+      toKRW,
+      closing = false,
+      onCloseRequest,
+    },
+    ref
+  ) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
   const formRef = useRef(null);
 
+  // Expose close method to parent via ref
+  useImperativeHandle(ref, () => ({
+    close: () => {
+      if (onCloseRequest) {
+        onCloseRequest();
+      }
+    },
+  }));
+
+  // Keep a ref for the latest onClose to avoid effect reset
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
+  // When closing prop becomes true, call onClosed after animation
+  useEffect(() => {
+    if (closing) {
+      const timer = setTimeout(() => {
+        if (onCloseRef.current) {
+          onCloseRef.current();
+        }
+      }, 300); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [closing]);
+
   const handleClose = () => {
-    setIsClosing(true);
-    // Wait for animation to complete before calling onClose
-    setTimeout(() => {
-      setIsClosing(false);
-      onClose();
-    }, 300); // Match animation duration
+    if (onCloseRequest) {
+      onCloseRequest();
+    }
   };
 
   const handleDeleteClick = () => {
@@ -237,12 +266,14 @@ function ExpenseModal({
     </div>
   );
 
+  if (!isMounted) return null;
+
   return (
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${
-          isClosing ? 'opacity-0' : 'opacity-100'
+          closing ? 'opacity-0' : 'opacity-100'
         }`}
         onClick={handleClose}
       ></div>
@@ -250,7 +281,7 @@ function ExpenseModal({
       {/* Bottom Sheet */}
       <div
         className={`absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col transition-transform duration-300 ease-out ${
-          isClosing ? 'translate-y-full' : 'translate-y-0'
+          closing ? 'translate-y-full' : 'translate-y-0'
         }`}
       >
         {/* Handle indicator */}
@@ -338,6 +369,6 @@ function ExpenseModal({
       )}
     </div>
   );
-}
+});
 
 export default ExpenseModal;

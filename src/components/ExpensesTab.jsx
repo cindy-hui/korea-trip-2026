@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { FRIENDS } from '../constants';
 import SettlementsSummary from './SettlementsSummary';
@@ -54,20 +54,16 @@ function ExpensesTab({
   const [modalMode, setModalMode] = useState(null); // 'add' | 'view' | 'edit' | null
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [topCardIndex, setTopCardIndex] = useState(0);
+  const [modalClosing, setModalClosing] = useState(false);
+  const modalRef = useRef(null);
 
   // Sync modal with editingExpenseId prop for edit mode
   useLayoutEffect(() => {
     if (editingExpenseId && modalMode === 'edit') {
       // already in edit mode, fine
     } else if (editingExpenseId) {
+      setModalClosing(false); // cancel any pending close
       setModalMode('edit');
-    }
-  }, [editingExpenseId]);
-
-  useLayoutEffect(() => {
-    if (!editingExpenseId && modalMode === 'edit') {
-      setModalMode(null);
-      setSelectedExpense(null);
     }
   }, [editingExpenseId, modalMode]);
 
@@ -75,7 +71,7 @@ function ExpensesTab({
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape' && modalMode) {
-        closeModal();
+        requestCloseModal();
       }
     };
     window.addEventListener('keydown', handleEscape);
@@ -98,13 +94,27 @@ function ExpensesTab({
     }
   };
 
-  const closeModal = () => {
+  const requestCloseModal = useCallback(() => {
+    setModalClosing(true);
+  }, []);
+
+  const handleModalClosed = () => {
+    // Cleanup after animation completes
     if (modalMode === 'edit') {
       onCancelEdit();
     }
     setModalMode(null);
     setSelectedExpense(null);
+    setModalClosing(false);
   };
+
+  // When edit mode is canceled from parent, animate modal out instead of immediate unmount
+  useLayoutEffect(() => {
+    if (!editingExpenseId && modalMode === 'edit') {
+      requestCloseModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingExpenseId, modalMode]);
 
   const openAddModal = () => {
     if (editingExpenseId) {
@@ -124,11 +134,13 @@ function ExpensesTab({
       splits: {},
     });
     setSelectedExpense(null);
+    setModalClosing(false); // cancel any pending close animation
     setModalMode('add');
   };
 
   const openViewModal = (expense) => {
     setSelectedExpense(expense);
+    setModalClosing(false); // cancel any pending close animation
     setModalMode('view');
   };
 
@@ -136,19 +148,19 @@ function ExpensesTab({
     // Use the existing startEdit handler to populate editFormData
     onStartEditExpense(expense);
     setSelectedExpense(expense);
+    setModalClosing(false); // cancel any pending close animation
     setModalMode('edit');
   };
 
   const handleDeleteExpense = (expenseId) => {
     onRemoveExpense(expenseId);
-    // onRemoveExpense already updates state
-    closeModal();
+    // Modal will close itself after deletion via handleClose
   };
 
   const handleAddSubmit = (e) => {
     const success = onAddExpense(e);
     if (success) {
-      closeModal();
+      requestCloseModal();
     }
     return success;
   };
@@ -344,12 +356,15 @@ function ExpensesTab({
       {/* Expense Modal */}
       {modalMode && (
         <ExpenseModal
+          ref={modalRef}
           mode={modalMode}
           expense={selectedExpense}
           formData={modalMode === 'add' ? newExpense : editFormData}
           onChangeFormData={modalMode === 'add' ? onChangeNewExpense : onChangeEditFormData}
           onSubmit={modalMode === 'add' ? handleAddSubmit : onUpdateExpense}
-          onClose={closeModal}
+          onClose={handleModalClosed}
+          onCloseRequest={requestCloseModal}
+          closing={modalClosing}
           onDelete={handleDeleteExpense}
           onEdit={openEditModal}
           friends={FRIENDS}

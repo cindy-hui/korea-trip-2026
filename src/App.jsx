@@ -667,6 +667,17 @@ export default function App() {
 
       <nav className="bg-white border-t border-slate-200 fixed bottom-0 w-full pb-safe flex justify-around px-3 py-2.5 shadow-sm rounded-t-2xl z-20">
         <button
+          onClick={() => setActiveTab('expenses')}
+          className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
+            activeTab === 'expenses'
+              ? 'text-indigo-500'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Receipt className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Expenses</span>
+        </button>
+        <button
           onClick={() => setActiveTab('itinerary')}
           className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
             activeTab === 'itinerary'
@@ -687,17 +698,6 @@ export default function App() {
         >
           <ListChecks className="w-5 h-5 mb-1" />
           <span className="text-[10px] font-medium">Packing</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('expenses')}
-          className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
-            activeTab === 'expenses'
-              ? 'text-indigo-500'
-              : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <Receipt className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-medium">Expenses</span>
         </button>
       </nav>
 

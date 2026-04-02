@@ -104,7 +104,7 @@ const ExpenseModal = forwardRef(
   const handleEditClick = () => {
     if (onEdit) {
       onEdit(expense);
-      handleClose();
+      // Do not close the modal; parent will switch mode to 'edit'
     }
   };
 
@@ -265,8 +265,6 @@ const ExpenseModal = forwardRef(
       />
     </div>
   );
-
-  if (!isMounted) return null;
 
   return (
     <div className="fixed inset-0 z-50">

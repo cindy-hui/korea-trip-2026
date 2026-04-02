@@ -64,8 +64,8 @@ function ExpensesList({ groupedByDate, onExpenseClick, toHKD, toKRW }) {
                       })()}
 
                       {/* Left side: title and paid by */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-slate-800 leading-snug truncate">
+                      <div className="flex-1 min-w-0 ">
+                        <h4 className="text-sm font-medium text-slate-800 leading-snug h-auto line-clamp-2">
                           {exp.desc}
                         </h4>
                         <div className="text-[10px] text-slate-400">

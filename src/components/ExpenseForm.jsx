@@ -331,7 +331,21 @@ function ExpenseForm({
         </div>
           {data.splitType === 'equal' && (
             <div className="py-2 px-2.5 text-[11px] text-gray-500">
-               👉 Split {data.participants.length} ways: {getEqualSplitAmount().toLocaleString()} {data.currency} each
+              👉 Split {data.participants.length} ways: {getEqualSplitAmount().toLocaleString()} {data.currency} each
+              {data.currency && (data.currency === 'KRW' || data.currency === 'HKD') && (
+                <span>
+                  {' '}/ ~ {(() => {
+                    const amount = getEqualSplitAmount();
+                    let converted = 0;
+                    if (data.currency === 'KRW') {
+                      converted = toHKD(amount, 'KRW');
+                    } else if (data.currency === 'HKD') {
+                      converted = toKRW(amount, 'HKD');
+                    }
+                    return `${converted.toLocaleString()} ${data.currency === 'KRW' ? 'HKD' : 'KRW'}`;
+                  })()}
+                </span>
+              )}
             </div>
           )}
           {data.splitType === 'custom' && (

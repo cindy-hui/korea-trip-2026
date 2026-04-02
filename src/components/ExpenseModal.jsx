@@ -262,6 +262,8 @@ const ExpenseModal = forwardRef(
         onToggleParticipant={handleToggleParticipant}
         onSubmit={handleFormSubmit}
         isEditing={mode === 'edit'}
+        toHKD={toHKD}
+        toKRW={toKRW}
       />
     </div>
   );

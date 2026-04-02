@@ -9,6 +9,8 @@ function ExpenseForm({
   onSubmit,
   isEditing = false,
   formRef,
+  toHKD,
+  toKRW,
 }) {
   const PRESET_CATEGORIES = ['Food', 'Transport', 'Shopping', 'Activities', 'Accommodation', 'Misc'];
 
@@ -176,6 +178,26 @@ function ExpenseForm({
             className="w-full px-2 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg font-mono  mt-1"
             required
           />
+          {/* Conversion display */}
+          {data.currency && (data.currency === 'KRW' || data.currency === 'HKD') && (
+            (() => {
+              const amount = parseFloat(data.amount) || 0;
+              let converted = 0;
+              let targetCurrency = '';
+              if (data.currency === 'KRW') {
+                converted = toHKD(amount, 'KRW');
+                targetCurrency = 'HKD';
+              } else if (data.currency === 'HKD') {
+                converted = toKRW(amount, 'HKD');
+                targetCurrency = 'KRW';
+              }
+              return (
+                <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                  ≈ {converted.toLocaleString()} {targetCurrency}
+                </div>
+              );
+            })()
+          )}
         </div>
 
         <div>

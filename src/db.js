@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient.js'
+import { DEFAULT_QUICK_LINKS } from './constants.js'
 
 // Default initial data
 export const DEFAULT_ITINERARY = [
@@ -503,15 +504,25 @@ export const db = {
       }
 
       console.log('📤 Saving quick links to Supabase:', quickLinks)
-      const { error } = await supabase
+      const serialized = JSON.stringify(quickLinks)
+      console.log('📤 Serialized value:', serialized)
+      const { data, error } = await supabase
         .from('settings')
-        .upsert({ key: 'quick_links', value: JSON.stringify(quickLinks) }, { onConflict: 'key' })
+        .upsert({ key: 'quick_links', value: serialized }, { onConflict: 'key' })
+        .select()
 
+      console.log('📤 Upsert response:', { data, error })
       if (error) throw error
       console.log('✅ Quick links saved successfully')
-      return { success: true }
+      return { success: true, data }
     } catch (error) {
       console.error('❌ Failed to save quick links:', error)
+      console.error('   Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
       return { success: false, error }
     }
   },

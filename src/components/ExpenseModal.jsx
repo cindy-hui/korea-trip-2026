@@ -21,7 +21,6 @@ const ExpenseModal = forwardRef(
     },
     ref
   ) => {
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const formRef = useRef(null);
 
   // Expose close method to parent via ref
@@ -58,12 +57,7 @@ const ExpenseModal = forwardRef(
   };
 
   const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const confirmDelete = () => {
     onDelete(expense.id);
-    setShowDeleteConfirm(false);
     handleClose();
   };
 
@@ -341,32 +335,6 @@ const ExpenseModal = forwardRef(
           </div>
         )}
       </div>
-
-      {/* Delete Confirmation Dialog */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-2">Delete Expense?</h3>
-            <p className="text-sm text-slate-600 mb-6">
-              Are you sure you want to delete "{expense.desc}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 });

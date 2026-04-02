@@ -11,7 +11,7 @@ export const INITIAL_ITINERARY = [
     items: [
       {
         id: 11,
-        text: '✈️ Arrive at Seoul Incheon Airport at 5.10 AM',
+        text: '✈️ Arrive at Seoul Incheon Airport',
         mapQuery: 'Incheon Airport',
         tips: 'Buy a T-Money card at the convenience store and withdraw some KRW cash here.',
         time: '5:10 AM',
@@ -276,5 +276,26 @@ export const INITIAL_EXPENSE = {
   splitType: 'equal',
   splits: {},
 };
+
+export const DEFAULT_QUICK_LINKS = [
+  {
+    title: 'Notion Itinerary',
+    url: 'https://www.notion.so/melsjournal/Korea-2026-31fa6ae7f7c6804abd52ca220901378d',
+    icon: '🌐',
+    color: 'blue',
+  },
+  {
+    title: 'Google Maps',
+    url: '#',
+    icon: '📍',
+    color: 'white',
+  },
+  {
+    title: 'Naver Maps',
+    url: 'https://map.naver.com/',
+    icon: '🧭',
+    color: 'green',
+  },
+];
 
 export { DEFAULT_KRW_RATE };

@@ -304,7 +304,19 @@ export const db = {
 
       console.log('📥 Settings query result:', { settingsData, settingsError })
 
-      if (itineraryError || packingError || expensesError || settingsError) {
+      // Load quick links
+      const { data: quickLinksData, error: quickLinksError } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'quick_links')
+        .limit(1)
+        .maybeSingle()
+
+      console.log('📥 Quick links query result:', { quickLinksData, quickLinksError })
+
+      // Check for errors (but don't fail if quick_links doesn't exist yet)
+      const hasCriticalError = itineraryError || packingError || expensesError
+      if (hasCriticalError) {
         console.error('❌ Database load errors:', {
           itineraryError,
           packingError,
@@ -317,6 +329,17 @@ export const db = {
           packingList: DEFAULT_PACKING_LIST,
           expenses: [],
           krwRate: DEFAULT_KRW_RATE,
+          quickLinks: DEFAULT_QUICK_LINKS,
+        }
+      }
+
+      let quickLinks = DEFAULT_QUICK_LINKS
+      if (quickLinksData && !quickLinksError) {
+        try {
+          quickLinks = JSON.parse(quickLinksData.value)
+          console.log('✅ Loaded quick links:', quickLinks)
+        } catch (e) {
+          console.error('❌ Failed to parse quick links:', e)
         }
       }
 
@@ -325,6 +348,7 @@ export const db = {
         packingList: packingData?.data || DEFAULT_PACKING_LIST,
         expenses: expensesData ? (expensesData.data || [expensesData]) : [],
         krwRate: settingsData ? parseFloat(settingsData.value) : DEFAULT_KRW_RATE,
+        quickLinks,
       }
 
       console.log('📥 Loaded data summary:', {
@@ -343,6 +367,7 @@ export const db = {
         packingList: DEFAULT_PACKING_LIST,
         expenses: [],
         krwRate: DEFAULT_KRW_RATE,
+        quickLinks: DEFAULT_QUICK_LINKS,
       }
     }
   },
@@ -432,15 +457,75 @@ export const db = {
     }
   },
 
+  // Load quick links from database
+  async loadQuickLinks() {
+    try {
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, using default quick links')
+        return DEFAULT_QUICK_LINKS
+      }
+
+      console.log('📥 Loading quick links from Supabase...')
+      const { data: quickLinksData, error: quickLinksError } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'quick_links')
+        .limit(1)
+        .maybeSingle()
+
+      console.log('📥 Quick links query result:', { quickLinksData, quickLinksError })
+
+      if (quickLinksError || !quickLinksData) {
+        console.warn('⚠️ Quick links not found, using defaults')
+        return DEFAULT_QUICK_LINKS
+      }
+
+      try {
+        const quickLinks = JSON.parse(quickLinksData.value)
+        console.log('✅ Loaded quick links:', quickLinks)
+        return quickLinks
+      } catch (parseError) {
+        console.error('❌ Failed to parse quick links:', parseError)
+        return DEFAULT_QUICK_LINKS
+      }
+    } catch (error) {
+      console.error('❌ Failed to load quick links from database:', error)
+      return DEFAULT_QUICK_LINKS
+    }
+  },
+
+  // Save quick links to database
+  async saveQuickLinks(quickLinks) {
+    try {
+      if (!supabase || typeof supabase.from !== 'function') {
+        console.warn('⚠️ Supabase client not available, skipping save')
+        return { success: true, skipped: true }
+      }
+
+      console.log('📤 Saving quick links to Supabase:', quickLinks)
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ key: 'quick_links', value: JSON.stringify(quickLinks) }, { onConflict: 'key' })
+
+      if (error) throw error
+      console.log('✅ Quick links saved successfully')
+      return { success: true }
+    } catch (error) {
+      console.error('❌ Failed to save quick links:', error)
+      return { success: false, error }
+    }
+  },
+
   // Save all data at once
-  async saveAll(itinerary, packingList, expenses, krwRate) {
+  async saveAll(itinerary, packingList, expenses, krwRate, quickLinks) {
     try {
       // Use Promise.all to save all concurrently
-      const [itineraryResult, packingResult, expensesResult, krwResult] = await Promise.allSettled([
+      const [itineraryResult, packingResult, expensesResult, krwResult, quickLinksResult] = await Promise.allSettled([
         this.saveItinerary(itinerary),
         this.savePackingList(packingList),
         this.saveExpenses(expenses),
         this.saveKrwRate(krwRate),
+        this.saveQuickLinks(quickLinks),
       ])
 
       const errors = []
@@ -448,6 +533,7 @@ export const db = {
       if (packingResult.status === 'rejected') errors.push('packing')
       if (expensesResult.status === 'rejected') errors.push('expenses')
       if (krwResult.status === 'rejected') errors.push('krw_rate')
+      if (quickLinksResult.status === 'rejected') errors.push('quick_links')
 
       if (errors.length > 0) {
         return { success: false, errors }

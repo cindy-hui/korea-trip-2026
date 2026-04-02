@@ -12,6 +12,7 @@ import {
   INITIAL_ITINERARY,
   INITIAL_PACKING_LIST,
   INITIAL_EXPENSE,
+  DEFAULT_QUICK_LINKS,
   DEFAULT_KRW_RATE,
 } from './constants';
 import ItineraryTab from './components/ItineraryTab';
@@ -56,27 +57,8 @@ export default function App() {
     onConfirm: null,
   });
 
-  // Quick Links state (default: Notion, Google Maps, Naver Maps)
-  const [quickLinks, setQuickLinks] = useState([
-    {
-      title: 'Notion Itinerary',
-      url: 'https://www.notion.so/melsjournal/Korea-2026-31fa6ae7f7c6804abd52ca220901378d',
-      icon: '🌐',
-      color: 'blue',
-    },
-    {
-      title: 'Google Maps',
-      url: '#',
-      icon: '📍',
-      color: 'white',
-    },
-    {
-      title: 'Naver Maps',
-      url: 'https://map.naver.com/',
-      icon: '🧭',
-      color: 'green',
-    },
-  ]);
+  // Quick Links state
+  const [quickLinks, setQuickLinks] = useState(DEFAULT_QUICK_LINKS);
 
   const toHKD = (amount, currency) => {
     if (!amount) return 0;
@@ -161,6 +143,7 @@ export default function App() {
       setPackingList(data.packingList)
       setExpenses(data.expenses)
       setKrwRate(data.krwRate)
+      setQuickLinks(data.quickLinks)
       setDataLoaded(true) // Mark data as loaded to prevent initial save wipe
     }
     loadData()
@@ -174,13 +157,14 @@ export default function App() {
         itineraryCount: itinerary.length,
         packingKeys: Object.keys(packingList).length,
         expensesCount: expenses.length,
-        krwRate
+        krwRate,
+        quickLinksCount: quickLinks.length
       })
-      const result = await db.saveAll(itinerary, packingList, expenses, krwRate)
+      const result = await db.saveAll(itinerary, packingList, expenses, krwRate, quickLinks)
       console.log('Save result:', result)
     }
     saveData()
-  }, [itinerary, packingList, expenses, krwRate, dataLoaded]);
+  }, [itinerary, packingList, expenses, krwRate, quickLinks, dataLoaded]);
 
   // itinerary handlers
   const handleItineraryFieldChange = (dayId, itemId, field, value) => {

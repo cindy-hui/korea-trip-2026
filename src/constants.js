@@ -285,12 +285,6 @@ export const DEFAULT_QUICK_LINKS = [
     color: 'blue',
   },
   {
-    title: 'Google Maps',
-    url: '#',
-    icon: '📍',
-    color: 'white',
-  },
-  {
     title: 'Naver Maps',
     url: 'https://map.naver.com/',
     icon: '🧭',

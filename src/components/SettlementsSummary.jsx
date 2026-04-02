@@ -75,13 +75,13 @@ function SettlementsSummary({ settlements, netBalances, toHKD }) {
                   <div className="flex items-center gap-1.5 flex-1">
                     <span className="text-xs font-medium text-slate-600">{s.from}</span>
                     <span className="text-xs text-slate-400">→</span>
-                    <span className="text-xs font-medium text-slate-700">{s.to}</span>
+                    <span className="text-xs font-medium text-slate-600">{s.to}</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-xs font-mono text-slate-600">
-                      {(s.amount).toLocaleString()} KRW
+                    <div className=" text-[10px] font-mono text-slate-500">
+                      ≈ {(s.amount).toLocaleString()} KRW
                       <span className="text-slate-400 mx-1">/</span>
-                      <span className="font-bold text-slate-700">{formatHKD(hkd)}</span>
+                      <span className="text-xs font-bold text-slate-700">{formatHKD(hkd)}</span>
                     </div>
                   </div>
                 </li>

@@ -20,7 +20,7 @@ function ExpensesList({ groupedByDate, onExpenseClick, toHKD, toKRW }) {
     'Shopping': { cardBg: 'bg-pink-50/70', badgeBg: 'bg-pink-100', text: 'text-pink-700' },
     'Activities': { cardBg: 'bg-orange-50/70', badgeBg: 'bg-orange-100', text: 'text-orange-700' },
     'Accommodation': { cardBg: 'bg-blue-50/70', badgeBg: 'bg-blue-100', text: 'text-blue-700' },
-    'Misc': { cardBg: 'bg-stone-200/70', badgeBg: 'bg-stone-300', text: 'text-stone-700' },
+    'Misc': { cardBg: 'bg-stone-100/100', badgeBg: 'bg-stone-300', text: 'text-stone-700' },
   };
 
   return (

@@ -4,6 +4,7 @@ import {
   MapPin,
   ListChecks,
   Receipt,
+  Wrench,
 } from 'lucide-react';
 import { db } from './db';
 import {
@@ -16,6 +17,7 @@ import {
 import ItineraryTab from './components/ItineraryTab';
 import PackingTab from './components/PackingTab';
 import ExpensesTab from './components/ExpensesTab';
+import ToolsTab from './components/ToolsTab';
 import ConfirmDialog from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -53,6 +55,28 @@ export default function App() {
     itemName: '',
     onConfirm: null,
   });
+
+  // Quick Links state (default: Notion, Google Maps, Naver Maps)
+  const [quickLinks, setQuickLinks] = useState([
+    {
+      title: 'Notion Itinerary',
+      url: 'https://www.notion.so/melsjournal/Korea-2026-31fa6ae7f7c6804abd52ca220901378d',
+      icon: '🌐',
+      color: 'blue',
+    },
+    {
+      title: 'Google Maps',
+      url: '#',
+      icon: '📍',
+      color: 'white',
+    },
+    {
+      title: 'Naver Maps',
+      url: 'https://map.naver.com/',
+      icon: '🧭',
+      color: 'green',
+    },
+  ]);
 
   const toHKD = (amount, currency) => {
     if (!amount) return 0;
@@ -663,19 +687,28 @@ export default function App() {
             />
           </ErrorBoundary>
         )}
+
+        {activeTab === 'tools' && (
+          <ToolsTab
+            krwRate={krwRate}
+            onChangeKrwRate={setKrwRate}
+            quickLinks={quickLinks}
+            onQuickLinksChange={setQuickLinks}
+          />
+        )}
       </main>
 
       <nav className="bg-white border-t border-slate-200 fixed bottom-0 w-full pb-safe flex justify-around px-3 py-2.5 shadow-sm rounded-t-2xl z-20">
         <button
-          onClick={() => setActiveTab('expenses')}
+          onClick={() => setActiveTab('packing')}
           className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
-            activeTab === 'expenses'
+            activeTab === 'packing'
               ? 'text-indigo-500'
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <Receipt className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-medium">Expenses</span>
+          <ListChecks className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Packing</span>
         </button>
         <button
           onClick={() => setActiveTab('itinerary')}
@@ -689,15 +722,26 @@ export default function App() {
           <span className="text-[10px] font-medium">Itinerary</span>
         </button>
         <button
-          onClick={() => setActiveTab('packing')}
+          onClick={() => setActiveTab('expenses')}
           className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
-            activeTab === 'packing'
+            activeTab === 'expenses'
               ? 'text-indigo-500'
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
-          <ListChecks className="w-5 h-5 mb-1" />
-          <span className="text-[10px] font-medium">Packing</span>
+          <Receipt className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Expenses</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('tools')}
+          className={`flex flex-col items-center p-2 min-w-[80px] rounded-xl transition-all ${
+            activeTab === 'tools'
+              ? 'text-indigo-500'
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Wrench className="w-5 h-5 mb-1" />
+          <span className="text-[10px] font-medium">Tools</span>
         </button>
       </nav>
 

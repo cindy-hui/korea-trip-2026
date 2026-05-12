@@ -258,6 +258,8 @@ export const db = {
           packingList: DEFAULT_PACKING_LIST,
           expenses: [],
           krwRate: DEFAULT_KRW_RATE,
+          quickLinks: DEFAULT_QUICK_LINKS,
+          loaded: false, // Flag indicating this is fallback data
         }
       }
 
@@ -315,24 +317,14 @@ export const db = {
 
       console.log('📥 Quick links query result:', { quickLinksData, quickLinksError })
 
-      // Check for errors (but don't fail if quick_links doesn't exist yet)
-      const hasCriticalError = itineraryError || packingError || expensesError
-      if (hasCriticalError) {
-        console.error('❌ Database load errors:', {
-          itineraryError,
-          packingError,
-          expensesError,
-          settingsError
-        })
-        // Return defaults if any table doesn't exist yet or query fails
-        return {
-          itinerary: DEFAULT_ITINERARY,
-          packingList: DEFAULT_PACKING_LIST,
-          expenses: [],
-          krwRate: DEFAULT_KRW_RATE,
-          quickLinks: DEFAULT_QUICK_LINKS,
-        }
-      }
+      // Handle errors per-table - use defaults only for failed tables
+      console.error('❌ Database load errors:', {
+        itineraryError,
+        packingError,
+        expensesError,
+        settingsError,
+        quickLinksError
+      })
 
       let quickLinks = DEFAULT_QUICK_LINKS
       if (quickLinksData && !quickLinksError) {
@@ -350,13 +342,15 @@ export const db = {
         expenses: expensesData ? (expensesData.data || [expensesData]) : [],
         krwRate: settingsData ? parseFloat(settingsData.value) : DEFAULT_KRW_RATE,
         quickLinks,
+        loaded: !(itineraryError || packingError || expensesError), // false if any critical table failed to load
       }
 
       console.log('📥 Loaded data summary:', {
         itineraryCount: result.itinerary.length,
         packingKeys: Object.keys(result.packingList).length,
         expensesCount: result.expenses.length,
-        krwRate: result.krwRate
+        krwRate: result.krwRate,
+        loaded: result.loaded,
       })
 
       return result
@@ -369,6 +363,7 @@ export const db = {
         expenses: [],
         krwRate: DEFAULT_KRW_RATE,
         quickLinks: DEFAULT_QUICK_LINKS,
+        loaded: false, // Indicates fallback/default data
       }
     }
   },

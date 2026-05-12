@@ -31,7 +31,7 @@ export default function App() {
   const [itinerary, setItinerary] = useState(INITIAL_ITINERARY);
   const [packingList, setPackingList] = useState(INITIAL_PACKING_LIST);
   const [expenses, setExpenses] = useState([]);
-  const [dataLoaded, setDataLoaded] = useState(false); // Prevent initial save overwrite
+  const [dataLoadState, setDataLoadState] = useState({ loaded: false, successful: false }); // Track both load completion and success
   const [newExpense, setNewExpense] = useState(INITIAL_EXPENSE);
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
   const [expenseDateFilter, setExpenseDateFilter] = useState('All');
@@ -59,6 +59,24 @@ export default function App() {
 
   // Quick Links state
   const [quickLinks, setQuickLinks] = useState(DEFAULT_QUICK_LINKS);
+
+  // Load data from database on app startup
+  useEffect(() => {
+    const loadData = async () => {
+      const data = await db.loadAll()
+      setItinerary(data.itinerary)
+      setPackingList(data.packingList)
+      setExpenses(data.expenses)
+      setKrwRate(data.krwRate)
+      setQuickLinks(data.quickLinks)
+      // Track both load completion and success
+      setDataLoadState({
+        loaded: data.loaded,
+        successful: data.loaded === true
+      })
+    }
+    loadData()
+  }, [])
 
   const toHKD = (amount, currency) => {
     if (!amount) return 0;
@@ -135,23 +153,12 @@ export default function App() {
     return acc;
   }, {});
 
-  // Load data from database on app startup
-  useEffect(() => {
-    const loadData = async () => {
-      const data = await db.loadAll()
-      setItinerary(data.itinerary)
-      setPackingList(data.packingList)
-      setExpenses(data.expenses)
-      setKrwRate(data.krwRate)
-      setQuickLinks(data.quickLinks)
-      setDataLoaded(true) // Mark data as loaded to prevent initial save wipe
-    }
-    loadData()
-  }, []);
 
   // Save data to database whenever it changes
   useEffect(() => {
-    if (!dataLoaded) return; // Skip initial save until data is loaded from DB
+    // Only save if we successfully loaded data from DB
+    // If loading failed (successful: false), we have stale/default data, don't save
+    if (!dataLoadState.loaded || !dataLoadState.successful) return;
     const saveData = async () => {
       console.log('💾 Save triggered with:', {
         itineraryCount: itinerary.length,
@@ -164,7 +171,7 @@ export default function App() {
       console.log('Save result:', result)
     }
     saveData()
-  }, [itinerary, packingList, expenses, krwRate, quickLinks, dataLoaded]);
+  }, [itinerary, packingList, expenses, krwRate, quickLinks, dataLoadState]);
 
   // itinerary handlers
   const handleItineraryFieldChange = (dayId, itemId, field, value) => {
